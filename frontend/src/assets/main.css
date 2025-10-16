@@ -1,0 +1,11 @@
+@import './base.css';
+
+body {
+  background: radial-gradient(circle at 10% 20%, rgba(37, 99, 235, 0.18), transparent 35%),
+    radial-gradient(circle at 90% 10%, rgba(59, 130, 246, 0.15), transparent 45%),
+    #f8fafc;
+}
+
+#app {
+  min-height: 100vh;
+}
