@@ -23,8 +23,15 @@
             class="nav-link"
             :class="{ active: activeRouteName === item.name }"
           >
-            <span class="nav-label">{{ item.label }}</span>
-            <span v-if="item.caption" class="nav-caption">{{ item.caption }}</span>
+            <div class="nav-link-content">
+              <span v-if="item.icon" class="nav-icon" aria-hidden="true">
+                {{ item.icon }}
+              </span>
+              <div class="nav-text">
+                <span class="nav-label">{{ item.label }}</span>
+                <span v-if="item.caption" class="nav-caption">{{ item.caption }}</span>
+              </div>
+            </div>
           </RouterLink>
 
           <hr v-if="index !== navGroups.length - 1" class="group-divider" />
@@ -53,6 +60,7 @@ interface NavItem {
   name: string;
   label: string;
   caption?: string;
+  icon?: string;
 }
 
 interface NavGroup {
@@ -65,35 +73,90 @@ const navGroups = computed<NavGroup[]>(() => [
   {
     id: 'overview',
     items: [
-      { name: 'home', label: 'Ana Sayfa', caption: 'Genel bakış ve özet' }
+      {
+        name: 'home',
+        label: 'Ana Sayfa',
+        caption: 'Genel bakış ve özet',
+        icon: '🏠'
+      }
     ]
   },
   {
     id: 'tracking',
     label: 'Takip Modülleri',
     items: [
-      { name: 'inventory-tracking', label: 'Envanter Takip', caption: 'Donanım varlıkları' },
-      { name: 'license-tracking', label: 'Lisans Takip', caption: 'Yazılım yetkileri' },
-      { name: 'printer-tracking', label: 'Yazıcı Takip', caption: 'Yazıcı durumları' },
-      { name: 'stock-tracking', label: 'Stok Takip', caption: 'Giriş / çıkış işlemleri' }
+      {
+        name: 'inventory-tracking',
+        label: 'Envanter Takip',
+        caption: 'Donanım varlıkları',
+        icon: '📦'
+      },
+      {
+        name: 'license-tracking',
+        label: 'Lisans Takip',
+        caption: 'Yazılım yetkileri',
+        icon: '🪪'
+      },
+      {
+        name: 'printer-tracking',
+        label: 'Yazıcı Takip',
+        caption: 'Yazıcı durumları',
+        icon: '🖨️'
+      },
+      {
+        name: 'stock-tracking',
+        label: 'Stok Takip',
+        caption: 'Giriş / çıkış işlemleri',
+        icon: '📊'
+      }
     ]
   },
   {
     id: 'operations',
     label: 'Operasyon',
     items: [
-      { name: 'request-tracking', label: 'Talep Takip', caption: 'Açık talepler' },
-      { name: 'knowledge-base', label: 'Bilgi Bankası', caption: 'Prosedürler ve rehberler' },
-      { name: 'scrap-management', label: 'Hurdalar', caption: 'Hurda listesi' }
+      {
+        name: 'request-tracking',
+        label: 'Talep Takip',
+        caption: 'Açık talepler',
+        icon: '🗂️'
+      },
+      {
+        name: 'knowledge-base',
+        label: 'Bilgi Bankası',
+        caption: 'Prosedürler ve rehberler',
+        icon: '📚'
+      },
+      {
+        name: 'scrap-management',
+        label: 'Hurdalar',
+        caption: 'Hurda listesi',
+        icon: '🗑️'
+      }
     ]
   },
   {
     id: 'account',
     label: 'Hesap ve Yönetim',
     items: [
-      { name: 'profile', label: 'Profil', caption: 'Kullanıcı bilgileri' },
-      { name: 'admin-panel', label: 'Admin Paneli', caption: 'Yetki ve roller' },
-      { name: 'records', label: 'Kayıtlar', caption: 'İşlem geçmişi' }
+      {
+        name: 'profile',
+        label: 'Profil',
+        caption: 'Kullanıcı bilgileri',
+        icon: '👤'
+      },
+      {
+        name: 'admin-panel',
+        label: 'Admin Paneli',
+        caption: 'Yetki ve roller',
+        icon: '🛠️'
+      },
+      {
+        name: 'records',
+        label: 'Kayıtlar',
+        caption: 'İşlem geçmişi',
+        icon: '📝'
+      }
     ]
   }
 ]);
@@ -162,8 +225,7 @@ const navGroups = computed<NavGroup[]>(() => [
 }
 
 .nav-link {
-  display: grid;
-  gap: 0.2rem;
+  display: block;
   padding: 0.85rem 1rem;
   border-radius: 14px;
   color: inherit;
@@ -173,10 +235,40 @@ const navGroups = computed<NavGroup[]>(() => [
   transition: background 0.2s ease, border 0.2s ease, transform 0.2s ease;
 }
 
+.nav-link-content {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 0.75rem;
+  row-gap: 0.25rem;
+  align-items: center;
+}
+
+.nav-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.nav-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.85rem;
+  background: rgba(15, 23, 42, 0.55);
+  font-size: 1.1rem;
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.3);
+}
+
 .nav-link:hover {
   background: rgba(30, 41, 59, 0.6);
   border-color: rgba(148, 163, 184, 0.35);
   transform: translateX(4px);
+}
+
+.nav-link:hover .nav-icon {
+  background: rgba(30, 41, 59, 0.65);
 }
 
 .nav-link.active {
@@ -184,6 +276,11 @@ const navGroups = computed<NavGroup[]>(() => [
   border-color: rgba(191, 219, 254, 0.6);
   color: #f8fafc;
   box-shadow: 0 10px 25px rgba(37, 99, 235, 0.35);
+}
+
+.nav-link.active .nav-icon {
+  background: rgba(248, 250, 252, 0.28);
+  box-shadow: inset 0 0 0 1px rgba(248, 250, 252, 0.5);
 }
 
 .nav-label {
