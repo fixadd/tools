@@ -1,46 +1,48 @@
 <template>
-  <section class="login-wrapper" aria-labelledby="login-title">
-    <h1 id="login-title">Hesabınıza giriş yapın</h1>
-    <p class="login-subtitle">
-      Ana sayfaya ulaşmak için kullanıcı adı ve şifrenizi girin.
-      <span class="hint">(admin / 123456)</span>
-    </p>
-
-    <form class="login-form" @submit.prevent="handleSubmit" novalidate>
-      <label class="form-field">
-        <span>Kullanıcı Adı</span>
-        <input
-          v-model.trim="form.username"
-          type="text"
-          name="username"
-          autocomplete="username"
-          required
-          placeholder="örn. admin"
-        />
-      </label>
-
-      <label class="form-field">
-        <span>Şifre</span>
-        <input
-          v-model="form.password"
-          type="password"
-          name="password"
-          autocomplete="current-password"
-          required
-          placeholder="örn. 123456"
-        />
-      </label>
-
-      <p v-if="error" class="form-error" role="alert">
-        {{ error }}
+  <div class="login-page">
+    <section class="login-wrapper" aria-labelledby="login-title">
+      <h1 id="login-title">Hesabınıza giriş yapın</h1>
+      <p class="login-subtitle">
+        Ana sayfaya ulaşmak için kullanıcı adı ve şifrenizi girin.
+        <span class="hint">(admin / 123456)</span>
       </p>
 
-      <button type="submit" class="submit-button" :disabled="isSubmitting">
-        <span v-if="!isSubmitting">Giriş Yap</span>
-        <span v-else>Kontrol ediliyor...</span>
-      </button>
-    </form>
-  </section>
+      <form class="login-form" @submit.prevent="handleSubmit" novalidate>
+        <label class="form-field">
+          <span>Kullanıcı Adı</span>
+          <input
+            v-model.trim="form.username"
+            type="text"
+            name="username"
+            autocomplete="username"
+            required
+            placeholder="örn. admin"
+          />
+        </label>
+
+        <label class="form-field">
+          <span>Şifre</span>
+          <input
+            v-model="form.password"
+            type="password"
+            name="password"
+            autocomplete="current-password"
+            required
+            placeholder="örn. 123456"
+          />
+        </label>
+
+        <p v-if="error" class="form-error" role="alert">
+          {{ error }}
+        </p>
+
+        <button type="submit" class="submit-button" :disabled="isSubmitting">
+          <span v-if="!isSubmitting">Giriş Yap</span>
+          <span v-else>Kontrol ediliyor...</span>
+        </button>
+      </form>
+    </section>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -92,18 +94,28 @@ const handleSubmit = () => {
 </script>
 
 <style scoped>
+.login-page {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem 3rem;
+  background: linear-gradient(180deg, rgba(241, 245, 249, 0.65) 0%, rgba(255, 255, 255, 0.9) 100%);
+}
+
 .login-wrapper {
   width: min(420px, 100%);
-  padding: 2.5rem 2rem;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
-  backdrop-filter: blur(6px);
+  padding: 2.75rem 2.25rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 24px 45px rgba(15, 23, 42, 0.18);
+  backdrop-filter: blur(8px);
   text-align: center;
 }
 
 .login-wrapper h1 {
-  font-size: 1.75rem;
+  font-size: 1.9rem;
   margin-bottom: 0.75rem;
   color: #0f172a;
 }
@@ -111,7 +123,7 @@ const handleSubmit = () => {
 .login-subtitle {
   margin-bottom: 2rem;
   color: #475569;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 .hint {
@@ -136,7 +148,7 @@ const handleSubmit = () => {
 
 .form-field input {
   width: 100%;
-  padding: 0.75rem 1rem;
+  padding: 0.85rem 1rem;
   border-radius: 12px;
   border: 1px solid #cbd5f5;
   background-color: #f8fafc;
@@ -159,7 +171,7 @@ const handleSubmit = () => {
 
 .submit-button {
   width: 100%;
-  padding: 0.85rem 1rem;
+  padding: 0.95rem 1rem;
   border-radius: 9999px;
   border: none;
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);

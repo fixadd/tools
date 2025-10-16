@@ -1,59 +1,119 @@
 <template>
-  <section class="home-wrapper" aria-labelledby="home-title">
-    <header>
+  <section class="page-section" aria-labelledby="home-title">
+    <header class="page-header">
       <h1 id="home-title">Ana Sayfa</h1>
-      <p class="home-subtitle">
-        Hoş geldiniz! Bu alan ileride oluşturacağımız diğer modüller için başlangıç noktasıdır.
+      <p class="page-intro">
+        Envanter yönetim paneline hoş geldiniz. Soldaki menüden takip modülleri, talepler ve
+        yönetim araçlarına erişebilir; aşağıdaki özet alanından son durumunuzu inceleyebilirsiniz.
       </p>
     </header>
 
-    <article class="home-card">
-      <h2>Sonraki Adımlar</h2>
-      <ul>
-        <li>Yeni sayfalar ekleyip router üzerinden bağlantı kurabilirsiniz.</li>
-        <li>Gerçek bir API ile kimlik doğrulaması entegre edebilirsiniz.</li>
-        <li>Dashboard, raporlar veya ayarlar gibi alt sayfalar oluşturabilirsiniz.</li>
-      </ul>
-    </article>
+    <div class="page-grid" role="list">
+      <article class="summary-card" role="listitem">
+        <h2>Takip Modülleri</h2>
+        <p>
+          Envanter, lisans, yazıcı ve stok kayıtlarını tek noktadan yönetin. Her modülde çalışma
+          listeleri, durum göstergeleri ve filtreleme seçenekleri planlanmıştır.
+        </p>
+        <RouterLink class="summary-link" :to="{ name: 'inventory-tracking' }">
+          Envanter modülüne git
+        </RouterLink>
+      </article>
+
+      <article class="summary-card" role="listitem">
+        <h2>Operasyon</h2>
+        <p>
+          Talep kayıtlarını izleyin, bilgi bankasından prosedürlere ulaşın ve hurda listesi ile geri
+          dönüşüm süreçlerini takip edin.
+        </p>
+        <RouterLink class="summary-link" :to="{ name: 'request-tracking' }">
+          Talepleri görüntüle
+        </RouterLink>
+      </article>
+
+      <article class="summary-card" role="listitem">
+        <h2>Yönetim</h2>
+        <p>
+          Profil ayarlarınızı güncelleyin, admin panelinde yetkileri yönetin ve yapılan tüm işlem
+          kayıtlarına ulaşın.
+        </p>
+        <RouterLink class="summary-link" :to="{ name: 'admin-panel' }">
+          Yönetim araçlarını aç
+        </RouterLink>
+      </article>
+    </div>
   </section>
 </template>
 
+<script setup lang="ts">
+import { RouterLink } from 'vue-router';
+</script>
+
 <style scoped>
-.home-wrapper {
-  width: min(720px, 100%);
-  margin: 0 auto;
+.page-section {
   display: grid;
-  gap: 2rem;
+  gap: 2.5rem;
   color: #0f172a;
 }
 
-header h1 {
+.page-header h1 {
+  margin: 0 0 0.75rem;
   font-size: 2.25rem;
-  margin-bottom: 0.5rem;
 }
 
-.home-subtitle {
-  color: #475569;
+.page-intro {
+  margin: 0;
+  max-width: 720px;
   font-size: 1.05rem;
+  color: #475569;
+  line-height: 1.6;
 }
 
-.home-card {
+.page-grid {
+  display: grid;
+  gap: 1.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.summary-card {
   padding: 2rem;
   border-radius: 20px;
   background: #ffffff;
-  box-shadow: 0 24px 50px rgba(15, 23, 42, 0.12);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-}
-
-.home-card h2 {
-  font-size: 1.5rem;
-  margin-bottom: 1rem;
-}
-
-.home-card ul {
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  box-shadow: 0 24px 50px rgba(15, 23, 42, 0.08);
   display: grid;
-  gap: 0.75rem;
-  list-style: disc inside;
-  color: #1e293b;
+  gap: 1rem;
+  min-height: 220px;
+}
+
+.summary-card h2 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.summary-card p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.summary-link {
+  align-self: flex-end;
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.summary-link::after {
+  content: '›';
+  font-size: 1.1rem;
+  transition: transform 0.2s ease;
+}
+
+.summary-link:hover::after {
+  transform: translateX(4px);
 }
 </style>
