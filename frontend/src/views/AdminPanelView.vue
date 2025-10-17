@@ -1,117 +1,156 @@
 <template>
-  <section class="page-section" aria-labelledby="admin-title">
-    <header class="page-header">
-      <div>
-        <h1 id="admin-title">Admin Paneli</h1>
-        <p class="page-intro">
-          Kullanıcıları yönet, ürün kataloglarını güncelle ve bağlantı yapılandırmalarını düzenle.
-          Admin paneli tüm modüllerin ortak verilerinin tutulduğu merkezi yönetim alanıdır.
-        </p>
+  <section class="admin-page" aria-labelledby="admin-panel-title">
+    <div class="panel-card">
+      <header class="panel-header">
+        <div class="panel-heading">
+          <span class="panel-badge">Yönetim Modülü</span>
+          <h1 id="admin-panel-title">Admin Paneli</h1>
+          <p class="panel-intro">
+            Rolleri, ürün modüllerini ve entegrasyon bağlantılarını tek noktadan yönetin. Tüm
+            güncellemeler ilgili modüllere otomatik olarak aktarılır.
+          </p>
+        </div>
+        <div class="panel-actions">
+          <RouterLink :to="primaryActionRoute" class="primary-action">
+            {{ primaryActionLabel }}
+          </RouterLink>
+          <label class="search-field" :class="{ disabled: isSearchDisabled }">
+            <span class="search-icon" aria-hidden="true">🔍</span>
+            <input
+              v-model="searchQuery"
+              type="search"
+              :disabled="isSearchDisabled"
+              :aria-disabled="isSearchDisabled"
+              placeholder="Kullanıcı veya ekip ara"
+              aria-label="Kullanıcı arama"
+              :aria-controls="isSearchDisabled ? undefined : 'users-table'"
+            />
+          </label>
+        </div>
+      </header>
+
+      <nav class="panel-tabs" aria-label="Panel içerikleri">
+        <button
+          v-for="tab in tabItems"
+          :key="tab.id"
+          type="button"
+          class="panel-tab"
+          :class="{ active: activeTab === tab.id }"
+          @click="activeTab = tab.id"
+        >
+          <span class="tab-icon" aria-hidden="true">{{ tab.icon }}</span>
+          <span class="tab-text">
+            <span class="tab-label">{{ tab.label }}</span>
+            <span class="tab-caption">{{ tab.caption }}</span>
+          </span>
+        </button>
+      </nav>
+
+      <div class="panel-body">
+        <div v-if="activeTab === 'users'" class="tab-panel users-panel">
+          <table id="users-table" class="admin-table">
+            <thead>
+              <tr>
+                <th scope="col">Ad</th>
+                <th scope="col">Departman</th>
+                <th scope="col">E-posta</th>
+                <th scope="col">Son Giriş</th>
+                <th scope="col">Modül</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="user in filteredUsers" :key="user.id">
+                <td>
+                  <span class="user-name">{{ user.name }}</span>
+                </td>
+                <td>{{ user.department }}</td>
+                <td>{{ user.email }}</td>
+                <td>{{ user.lastLogin }}</td>
+                <td>
+                  <RouterLink :to="{ name: user.routeName }" class="table-link">
+                    {{ user.module }}
+                  </RouterLink>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div v-else-if="activeTab === 'modules'" class="tab-panel modules-panel">
+          <ul class="module-grid" role="list">
+            <li v-for="module in moduleCards" :key="module.id" class="module-card" role="listitem">
+              <div class="module-icon" aria-hidden="true">{{ module.icon }}</div>
+              <div class="module-text">
+                <p class="module-label">{{ module.title }}</p>
+                <p class="module-meta">{{ module.module }} • {{ module.count }} kayıt</p>
+                <p class="module-note">{{ module.description }}</p>
+              </div>
+              <RouterLink :to="{ name: module.routeName }" class="module-link">
+                {{ module.linkLabel }}
+              </RouterLink>
+            </li>
+          </ul>
+        </div>
+
+        <div v-else class="tab-panel integrations-panel">
+          <ul class="integration-grid" role="list">
+            <li
+              v-for="integration in integrationCards"
+              :key="integration.id"
+              class="integration-card"
+              role="listitem"
+            >
+              <div class="integration-icon" aria-hidden="true">{{ integration.icon }}</div>
+              <div class="integration-text">
+                <p class="integration-label">{{ integration.title }}</p>
+                <p class="integration-status">{{ integration.status }}</p>
+                <p class="integration-note">{{ integration.note }}</p>
+              </div>
+              <RouterLink :to="{ name: integration.routeName }" class="integration-link">
+                {{ integration.linkLabel }}
+              </RouterLink>
+            </li>
+          </ul>
+        </div>
       </div>
-      <RouterLink :to="{ name: 'records' }" class="header-link">
-        Kayıt geçmişini aç
-      </RouterLink>
-    </header>
-
-    <div class="admin-grid">
-      <article class="admin-card" aria-labelledby="users-title">
-        <header>
-          <h2 id="users-title">Kullanıcılar</h2>
-          <p>Rolleri ve erişim düzeyleri ile birlikte aktif kullanıcı listesi.</p>
-        </header>
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th scope="col">Kullanıcı</th>
-              <th scope="col">Rol</th>
-              <th scope="col">Modül</th>
-              <th scope="col">Durum</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="user in users" :key="user.username">
-              <td>
-                <span class="user-name">{{ user.fullName }}</span>
-                <span class="user-username">{{ user.username }}</span>
-              </td>
-              <td>{{ user.role }}</td>
-              <td>{{ user.modules.join(', ') }}</td>
-              <td>{{ user.state }}</td>
-            </tr>
-          </tbody>
-        </table>
-        <footer>
-          <RouterLink :to="{ name: 'profile' }" class="card-link">
-            Profil bilgilerini düzenle
-          </RouterLink>
-        </footer>
-      </article>
-
-      <article class="admin-card" aria-labelledby="products-title">
-        <header>
-          <h2 id="products-title">Ürün Kütüphanesi</h2>
-          <p>Talep ve envanter modüllerinde kullanılacak ortak ürün listeleri.</p>
-        </header>
-        <ul class="product-list">
-          <li v-for="product in products" :key="product.id">
-            <div>
-              <p class="product-title">{{ product.title }}</p>
-              <p class="product-meta">{{ product.category }} • {{ product.count }} kayıt</p>
-              <p class="product-note">{{ product.note }}</p>
-            </div>
-            <RouterLink :to="{ name: product.routeName }" class="product-link">
-              {{ product.linkLabel }}
-            </RouterLink>
-          </li>
-        </ul>
-        <footer>
-          <RouterLink :to="{ name: 'request-tracking' }" class="card-link">
-            Talep açılış formunu güncelle
-          </RouterLink>
-        </footer>
-      </article>
-
-      <article class="admin-card" aria-labelledby="integrations-title">
-        <header>
-          <h2 id="integrations-title">Bağlantılar</h2>
-          <p>LDAP ve diğer entegrasyonlar ile sistemler arası senkronizasyonu yapılandır.</p>
-        </header>
-        <ul class="integration-list">
-          <li v-for="integration in integrations" :key="integration.id">
-            <div>
-              <p class="integration-title">{{ integration.title }}</p>
-              <p class="integration-note">{{ integration.note }}</p>
-            </div>
-            <RouterLink :to="{ name: integration.routeName }" class="integration-link">
-              {{ integration.linkLabel }}
-            </RouterLink>
-          </li>
-        </ul>
-        <footer>
-          <RouterLink :to="{ name: 'knowledge-base' }" class="card-link">
-            Bağlantı yönergelerini aç
-          </RouterLink>
-        </footer>
-      </article>
     </div>
 
+    <section class="highlight-grid" aria-label="Öne çıkan göstergeler">
+      <article v-for="item in highlightCards" :key="item.id" class="highlight-card">
+        <p class="highlight-label">{{ item.label }}</p>
+        <p class="highlight-value">{{ item.value }}</p>
+        <p class="highlight-note">{{ item.note }}</p>
+        <RouterLink :to="{ name: item.routeName }" class="highlight-link">
+          {{ item.linkLabel }}
+        </RouterLink>
+      </article>
+    </section>
+
     <article class="workflow-card">
-      <h2>Yönetim Döngüsü</h2>
+      <header>
+        <h2>Yönetim Döngüsü</h2>
+        <p>
+          Modüller arası entegrasyonlar otomatik aktarılır. Güncellemeler anlık olarak tüm ekiplere
+          yansır.
+        </p>
+      </header>
       <ol class="workflow-steps">
         <li>
-          Kullanıcı rolü atandığında ilgili bildirimler
-          <RouterLink :to="{ name: 'profile' }">Profil</RouterLink> sayfasında görüntülenir.
+          Rol atamaları tamamlandığında detaylar
+          <RouterLink :to="{ name: 'profile' }">Profil</RouterLink> ekranında görüntülenir ve
+          ilgili bildirimler gönderilir.
         </li>
         <li>
-          Ürün kütüphanesine eklenen kayıtlar otomatik olarak
+          Ürün kataloglarında yapılan değişiklikler
           <RouterLink :to="{ name: 'request-tracking' }">Talep Takip</RouterLink> ve
           <RouterLink :to="{ name: 'inventory-tracking' }">Envanter Takip</RouterLink>
-          formlarına yansır.
+          formlarına otomatik olarak yansır.
         </li>
         <li>
-          LDAP ayarları güncellendiğinde sonuçlar
-          <RouterLink :to="{ name: 'records' }">Kayıtlar</RouterLink> modülünde loglanır ve bilgi
-          bankasına aktarılır.
+          LDAP ve SSO entegrasyon güncellemeleri anlık olarak
+          <RouterLink :to="{ name: 'records' }">Kayıtlar</RouterLink> modülüne loglanır ve
+          <RouterLink :to="{ name: 'knowledge-base' }">Bilgi Bankası</RouterLink> rehberlerinde
+          yayınlanır.
         </li>
       </ol>
     </article>
@@ -119,184 +158,455 @@
 </template>
 
 <script setup lang="ts">
-import { RouterLink } from 'vue-router';
+import { computed, ref, watch } from 'vue';
+import { RouterLink, type RouteLocationRaw } from 'vue-router';
 
 type RouteName =
+  | 'home'
   | 'inventory-tracking'
   | 'request-tracking'
   | 'printer-tracking'
   | 'license-tracking'
+  | 'admin-panel'
   | 'profile'
   | 'knowledge-base'
-  | 'records';
+  | 'records'
+  | 'scrap-management';
 
-interface UserItem {
-  username: string;
-  fullName: string;
-  role: string;
-  modules: string[];
-  state: string;
+type TabId = 'users' | 'modules' | 'integrations';
+
+interface TabItem {
+  id: TabId;
+  label: string;
+  caption: string;
+  icon: string;
 }
 
-interface ProductItem {
+interface UserRow {
+  id: string;
+  name: string;
+  department: string;
+  email: string;
+  lastLogin: string;
+  module: string;
+  routeName: RouteName;
+}
+
+interface ModuleCard {
   id: string;
   title: string;
-  category: string;
+  module: string;
   count: number;
-  note: string;
+  description: string;
   routeName: RouteName;
+  icon: string;
   linkLabel: string;
 }
 
-interface IntegrationItem {
+interface IntegrationCard {
   id: string;
   title: string;
+  status: string;
+  note: string;
+  routeName: RouteName;
+  icon: string;
+  linkLabel: string;
+}
+
+interface HighlightCard {
+  id: string;
+  label: string;
+  value: string;
   note: string;
   routeName: RouteName;
   linkLabel: string;
 }
 
-const users: UserItem[] = [
+const tabItems: TabItem[] = [
   {
-    username: 'syilmaz',
-    fullName: 'Selin Yılmaz',
-    role: 'Talep Onaycısı',
-    modules: ['Talep', 'Hurda'],
-    state: 'Aktif'
+    id: 'users',
+    label: 'Kullanıcı Yönetimi',
+    caption: 'Roller ve ekipler',
+    icon: '👥'
   },
   {
-    username: 'byildiz',
-    fullName: 'Baran Yıldız',
-    role: 'Sistem Yöneticisi',
-    modules: ['Admin', 'LDAP'],
-    state: 'Aktif'
+    id: 'modules',
+    label: 'Ürün Modülleri',
+    caption: 'Katalog ve stoklar',
+    icon: '🧩'
   },
   {
-    username: 'ekara',
-    fullName: 'Ebru Kara',
-    role: 'Envanter Uzmanı',
-    modules: ['Envanter', 'Stok'],
-    state: 'İzinli'
+    id: 'integrations',
+    label: 'Bağlantılar',
+    caption: 'LDAP & API ayarları',
+    icon: '🔗'
   }
 ];
 
-const products: ProductItem[] = [
+const activeTab = ref<TabId>('users');
+const searchQuery = ref('');
+
+const userRows: UserRow[] = [
   {
-    id: '1',
+    id: 'user-1',
+    name: 'Selin Aydın',
+    department: 'Bilgi Teknolojileri',
+    email: 'selin.aydin@example.com',
+    lastLogin: '12.10.2023',
+    module: 'Talep Takip',
+    routeName: 'request-tracking'
+  },
+  {
+    id: 'user-2',
+    name: 'Mert Karaca',
+    department: 'Sistem Yönetimi',
+    email: 'mert.karaca@example.com',
+    lastLogin: '12.10.2023',
+    module: 'Admin Paneli',
+    routeName: 'admin-panel'
+  },
+  {
+    id: 'user-3',
+    name: 'Elif Korkmaz',
+    department: 'Bilgi Teknolojileri',
+    email: 'elif.korkmaz@example.com',
+    lastLogin: '10.10.2023',
+    module: 'Envanter Takip',
+    routeName: 'inventory-tracking'
+  },
+  {
+    id: 'user-4',
+    name: 'Barış Demir',
+    department: 'Destek Operasyonları',
+    email: 'baris.demir@example.com',
+    lastLogin: '09.10.2023',
+    module: 'Kayıtlar',
+    routeName: 'records'
+  }
+];
+
+const moduleCards: ModuleCard[] = [
+  {
+    id: 'module-1',
     title: 'BT Donanımları',
-    category: 'Envanter',
+    module: 'Envanter',
     count: 128,
-    note: 'Dizüstü, masaüstü, monitör ve çevre birimleri listesi.',
+    description: 'Dizüstü, masaüstü ve çevre birimlerinin merkezi kaydı.',
     routeName: 'inventory-tracking',
-    linkLabel: 'Envantere git'
+    icon: '💻',
+    linkLabel: 'Envanter modülünü aç'
   },
   {
-    id: '2',
+    id: 'module-2',
     title: 'Yazılım Lisansları',
-    category: 'Lisans',
+    module: 'Lisans',
     count: 86,
-    note: 'Adobe, Microsoft 365 ve özel uygulama lisansları.',
+    description: 'Adobe, Microsoft 365 ve özel uygulama lisans listeleri.',
     routeName: 'license-tracking',
-    linkLabel: 'Lisansları aç'
+    icon: '🪪',
+    linkLabel: 'Lisans kayıtlarını görüntüle'
   },
   {
-    id: '3',
-    title: 'Yazıcı Sarf Malzemeleri',
-    category: 'Stok',
+    id: 'module-3',
+    title: 'Sarf Malzemeleri',
+    module: 'Yazıcı',
     count: 42,
-    note: 'Toner, drum ve bakım kitleri için standart kodlar.',
+    description: 'Toner, drum ve bakım kitleri için standart stok kodları.',
     routeName: 'printer-tracking',
-    linkLabel: 'Yazıcı takibini görüntüle'
+    icon: '🖨️',
+    linkLabel: 'Yazıcı takibini incele'
   }
 ];
 
-const integrations: IntegrationItem[] = [
+const integrationCards: IntegrationCard[] = [
   {
-    id: '1',
+    id: 'integration-1',
     title: 'Kurumsal LDAP',
-    note: 'Active Directory ile kullanıcı senkronizasyonu.',
+    status: 'Son senkronizasyon 5 dk önce',
+    note: 'Active Directory kullanıcı eşleştirmesi başarıyla tamamlandı.',
     routeName: 'records',
+    icon: '🌐',
     linkLabel: 'Logları incele'
   },
   {
-    id: '2',
-    title: 'Tek oturum açma (SSO)',
-    note: 'Portal girişleri için SSO sağlayıcı ayarları.',
+    id: 'integration-2',
+    title: 'Tek Oturum Açma (SSO)',
+    status: 'Durum: Aktif',
+    note: 'Portal girişleri için SSO sağlayıcı ayarları doğrulandı.',
     routeName: 'profile',
-    linkLabel: 'Kullanıcı erişimini gör'
+    icon: '🔐',
+    linkLabel: 'Erişim izinlerini aç'
   },
   {
-    id: '3',
-    title: 'Talep formu API',
-    note: 'Dış sistemlerden talep açılışına izin veren bağlantı.',
+    id: 'integration-3',
+    title: 'Talep Formu API',
+    status: 'Durum: Test ortamı',
+    note: 'Dış sistemlerden talep açılışını sağlayan bağlantı güncelleniyor.',
     routeName: 'request-tracking',
-    linkLabel: 'Talepleri izle'
+    icon: '⚙️',
+    linkLabel: 'Talepleri görüntüle'
   }
 ];
+
+const highlightCards: HighlightCard[] = [
+  {
+    id: 'highlight-roles',
+    label: 'Aktif Rol',
+    value: '6',
+    note: 'Yetki matrisinde tanımlı rol sayısı.',
+    routeName: 'admin-panel',
+    linkLabel: 'Rol detaylarını aç'
+  },
+  {
+    id: 'highlight-modules',
+    label: 'Yönetilen Modül',
+    value: '7',
+    note: 'Kontrol paneli üzerinden takip edilen modül sayısı.',
+    routeName: 'home',
+    linkLabel: 'Genel bakışı görüntüle'
+  },
+  {
+    id: 'highlight-requests',
+    label: 'Bekleyen Onay',
+    value: '5',
+    note: 'Talep modülünde onay bekleyen işlem.',
+    routeName: 'request-tracking',
+    linkLabel: 'Taleplere git'
+  }
+];
+
+const filteredUsers = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase();
+  if (!query) {
+    return userRows;
+  }
+
+  return userRows.filter((user) => {
+    return (
+      user.name.toLowerCase().includes(query) ||
+      user.department.toLowerCase().includes(query) ||
+      user.email.toLowerCase().includes(query) ||
+      user.module.toLowerCase().includes(query)
+    );
+  });
+});
+
+const isSearchDisabled = computed(() => activeTab.value !== 'users');
+
+watch(activeTab, (tab) => {
+  if (tab !== 'users') {
+    searchQuery.value = '';
+  }
+});
+
+const primaryActionLabel = computed(() => {
+  switch (activeTab.value) {
+    case 'modules':
+      return 'Katalogu Güncelle';
+    case 'integrations':
+      return 'Bağlantı Ekle';
+    default:
+      return 'Yeni Kullanıcı';
+  }
+});
+
+const primaryActionRoute = computed<RouteLocationRaw>(() => {
+  switch (activeTab.value) {
+    case 'modules':
+      return { name: 'inventory-tracking' };
+    case 'integrations':
+      return { name: 'knowledge-base' };
+    default:
+      return { name: 'profile' };
+  }
+});
 </script>
 
 <style scoped>
-.page-section {
+.admin-page {
   display: grid;
   gap: 2.5rem;
   color: #0f172a;
 }
 
-.page-header {
+.panel-card {
+  background: #ffffff;
+  border-radius: 28px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: 0 32px 70px rgba(15, 23, 42, 0.12);
+  padding: 2.5rem;
+  display: grid;
+  gap: 2rem;
+}
+
+.panel-header {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.5rem;
-  align-items: center;
   justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.75rem;
 }
 
-.page-header h1 {
-  margin: 0 0 0.75rem;
-  font-size: 2rem;
+.panel-heading {
+  display: grid;
+  gap: 0.85rem;
+  max-width: 580px;
 }
 
-.page-intro {
+.panel-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+.panel-heading h1 {
   margin: 0;
-  max-width: 760px;
-  font-size: 1.05rem;
+  font-size: 2.3rem;
+}
+
+.panel-intro {
+  margin: 0;
+  font-size: 1.02rem;
   color: #475569;
   line-height: 1.6;
 }
 
-.header-link {
-  padding: 0.75rem 1.25rem;
+.panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+}
+
+.primary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.65rem;
   border-radius: 999px;
-  background: #0f172a;
-  color: #ffffff;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #f8fafc;
   font-weight: 600;
-  font-size: 0.9rem;
+  text-decoration: none;
+  box-shadow: 0 20px 36px rgba(37, 99, 235, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.admin-grid {
+.primary-action:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 26px 44px rgba(37, 99, 235, 0.32);
+}
+
+.search-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.7rem 1rem;
+  border-radius: 16px;
+  background: rgba(248, 250, 252, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.search-field input {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 0.95rem;
+  color: #0f172a;
+  min-width: 220px;
+}
+
+.search-field input::placeholder {
+  color: rgba(100, 116, 139, 0.8);
+}
+
+.search-field.disabled {
+  opacity: 0.6;
+}
+
+.search-field.disabled input {
+  cursor: not-allowed;
+}
+
+.search-icon {
+  font-size: 1.1rem;
+}
+
+.panel-tabs {
   display: grid;
-  gap: 1.75rem;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
 }
 
-.admin-card {
-  padding: 2rem;
-  border-radius: 22px;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  box-shadow: 0 24px 45px rgba(15, 23, 42, 0.1);
-  background: #ffffff;
+.panel-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(248, 250, 252, 0.9);
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.panel-tab:hover {
+  transform: translateY(-2px);
+  border-color: rgba(37, 99, 235, 0.4);
+  box-shadow: 0 16px 28px rgba(37, 99, 235, 0.18);
+}
+
+.panel-tab.active {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.16), rgba(37, 99, 235, 0.12));
+  border-color: rgba(37, 99, 235, 0.45);
+  box-shadow: 0 20px 36px rgba(37, 99, 235, 0.22);
+}
+
+.tab-icon {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 16px;
+  background: rgba(59, 130, 246, 0.18);
   display: grid;
-  gap: 1.5rem;
+  place-items: center;
+  font-size: 1.25rem;
 }
 
-.admin-card header h2 {
-  margin: 0 0 0.4rem;
-  font-size: 1.35rem;
+.tab-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
 }
 
-.admin-card header p {
-  margin: 0;
+.tab-label {
+  font-weight: 600;
+}
+
+.tab-caption {
+  font-size: 0.82rem;
   color: #475569;
-  line-height: 1.5;
+}
+
+.panel-body {
+  display: block;
+}
+
+.tab-panel {
+  background: rgba(248, 250, 252, 0.9);
+  border-radius: 22px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 1.5rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 22px 38px rgba(15, 23, 42, 0.08);
 }
 
 .admin-table {
@@ -307,108 +617,221 @@ const integrations: IntegrationItem[] = [
 
 .admin-table th,
 .admin-table td {
-  padding: 0.75rem 1rem;
+  padding: 0.9rem 1.1rem;
   text-align: left;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
 }
 
-.admin-table th {
+.admin-table thead th {
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: #475569;
-  font-weight: 600;
-  background: rgba(226, 232, 240, 0.35);
+  background: rgba(226, 232, 240, 0.4);
 }
 
 .user-name {
-  display: block;
   font-weight: 600;
 }
 
-.user-username {
-  display: block;
-  font-size: 0.85rem;
-  color: #64748b;
-}
-
-.card-link {
+.table-link {
   color: #2563eb;
   font-weight: 600;
 }
 
-.product-list,
-.integration-list {
+.module-grid,
+.integration-grid {
+  list-style: none;
   margin: 0;
   padding: 0;
-  list-style: none;
   display: grid;
+  gap: 1.2rem;
+}
+
+.module-card,
+.integration-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   gap: 1rem;
+  align-items: center;
+  padding: 1.4rem 1.6rem;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: 0 18px 32px rgba(15, 23, 42, 0.08);
 }
 
-.product-list li,
-.integration-list li {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-  padding: 1.25rem;
-  border-radius: 16px;
-  background: rgba(241, 245, 249, 0.55);
-  border: 1px solid rgba(148, 163, 184, 0.25);
+.module-icon,
+.integration-icon {
+  width: 2.8rem;
+  height: 2.8rem;
+  border-radius: 18px;
+  background: rgba(59, 130, 246, 0.16);
+  display: grid;
+  place-items: center;
+  font-size: 1.35rem;
 }
 
-.product-title,
-.integration-title {
-  margin: 0 0 0.35rem;
-  font-weight: 600;
-}
-
-.product-meta {
+.module-label,
+.integration-label {
   margin: 0;
-  font-size: 0.9rem;
-  color: #64748b;
+  font-weight: 600;
+  font-size: 1.05rem;
 }
 
-.product-note,
-.integration-note {
-  margin: 0.35rem 0 0;
-  font-size: 0.9rem;
+.module-meta,
+.integration-status {
+  margin: 0.25rem 0 0;
   color: #475569;
+  font-size: 0.9rem;
 }
 
-.product-link,
+.module-note,
+.integration-note {
+  margin: 0.45rem 0 0;
+  color: #1f2937;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.module-link,
 .integration-link {
   color: #2563eb;
   font-weight: 600;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.highlight-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+}
+
+.highlight-card {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(14, 165, 233, 0.12));
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 22px;
+  padding: 1.6rem;
+  display: grid;
+  gap: 0.75rem;
+  box-shadow: 0 24px 40px rgba(59, 130, 246, 0.18);
+}
+
+.highlight-label {
+  margin: 0;
   font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(29, 78, 216, 0.85);
+}
+
+.highlight-value {
+  margin: 0;
+  font-size: 2.4rem;
+  font-weight: 700;
+}
+
+.highlight-note {
+  margin: 0;
+  color: #1f2937;
+  line-height: 1.5;
+}
+
+.highlight-link {
+  color: #1d4ed8;
+  font-weight: 600;
+  text-decoration: none;
 }
 
 .workflow-card {
-  padding: 2.5rem;
-  border-radius: 24px;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(14, 165, 233, 0.08));
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  box-shadow: 0 25px 45px rgba(15, 23, 42, 0.1);
+  background: #ffffff;
+  border-radius: 26px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  padding: 2.25rem;
+  box-shadow: 0 28px 52px rgba(15, 23, 42, 0.1);
   display: grid;
-  gap: 1.25rem;
+  gap: 1.5rem;
 }
 
-.workflow-card h2 {
+.workflow-card header h2 {
+  margin: 0 0 0.6rem;
+  font-size: 1.6rem;
+}
+
+.workflow-card header p {
   margin: 0;
-  font-size: 1.4rem;
+  color: #475569;
+  line-height: 1.6;
 }
 
 .workflow-steps {
   margin: 0;
   padding-left: 1.2rem;
   display: grid;
-  gap: 0.75rem;
+  gap: 1rem;
   color: #1f2937;
   line-height: 1.6;
 }
 
+.workflow-steps a {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+@media (max-width: 1024px) {
+  .panel-card {
+    padding: 2rem;
+  }
+
+  .panel-tabs {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+
+  .module-card,
+  .integration-card {
+    grid-template-columns: 1fr;
+    text-align: left;
+  }
+}
+
 @media (max-width: 720px) {
-  .product-list li,
-  .integration-list li {
+  .panel-header {
     flex-direction: column;
+  }
+
+  .panel-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .search-field input {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 560px) {
+  .panel-card {
+    padding: 1.6rem;
+  }
+
+  .panel-tabs {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .primary-action,
+  .search-field {
+    width: 100%;
+  }
+
+  .search-field {
+    justify-content: flex-start;
   }
 }
 </style>

@@ -1,71 +1,85 @@
 <template>
-  <section class="page-section" aria-labelledby="request-title">
-    <header class="page-header">
-      <div>
-        <h1 id="request-title">Talep Takip</h1>
-        <p class="page-intro">
-          Envanter, lisans ve destek ihtiyaçları için açılan talepleri uçtan uca yönetin. Durumlara
-          göre iş akışlarını takip ederek onaylanan ürünleri envantere aktarın, iptal edilenleri ise
-          kayıt altına alarak süreci şeffaflaştırın.
-        </p>
-      </div>
+  <section class="workspace-page" aria-labelledby="request-title">
+    <article class="workspace-hero">
+      <header class="hero-header">
+        <div class="hero-heading">
+          <span class="hero-badge">Operasyon Merkezi</span>
+          <h1 id="request-title">Talep Takip</h1>
+          <p class="hero-intro">
+            Envanter, lisans ve destek ihtiyaçları için açılan talepleri uçtan uca yönetin. Durumlara
+            göre iş akışlarını takip ederek onaylanan ürünleri envantere aktarın, iptal edilenleri ise
+            kayıt altına alarak süreci şeffaflaştırın.
+          </p>
+        </div>
+        <div class="hero-actions">
+          <RouterLink :to="{ name: 'stock-tracking' }" class="primary-action">Stok rezervasyonlarını aç</RouterLink>
+          <RouterLink :to="{ name: 'records' }" class="secondary-link">Denetim kayıtlarını incele</RouterLink>
+        </div>
+      </header>
+      <dl class="hero-metrics">
+        <div v-for="metric in heroMetrics" :key="metric.id">
+          <dt>{{ metric.label }}</dt>
+          <dd>{{ metric.value }}</dd>
+          <p class="metric-note">{{ metric.note }}</p>
+        </div>
+      </dl>
+    </article>
 
-      <div class="status-summary" role="list">
-        <article
-          v-for="summary in statusSummary"
-          :key="summary.id"
-          class="summary-card"
-          role="listitem"
-        >
-          <span class="summary-label">{{ summary.title }}</span>
-          <p class="summary-count">{{ summary.count }}</p>
-          <span class="summary-caption">{{ totalRequests }} toplam talebin içinde</span>
-        </article>
-      </div>
-    </header>
-
-    <div class="status-board" role="list">
+    <div class="workspace-grid columns-2 request-grid">
       <article
         v-for="column in requestColumns"
         :key="column.id"
-        class="status-column"
-        role="listitem"
-        :style="{ '--column-accent': column.accent }"
+        class="workspace-card status-card"
+        :style="{ '--status-accent': column.accent }"
       >
-        <header class="column-header">
+        <header class="status-header">
           <div>
             <h2>{{ column.title }}</h2>
             <p>{{ column.description }}</p>
           </div>
-          <span class="column-badge">{{ column.items.length }}</span>
+          <span class="status-counter">{{ column.items.length }}</span>
         </header>
-
-        <ul class="request-list">
-          <li v-for="item in column.items" :key="item.id" class="request-item">
-            <div class="request-meta">
-              <p class="request-title">{{ item.title }}</p>
-              <p class="request-details">
-                <span>{{ item.requester }}</span>
-                <span aria-hidden="true">•</span>
-                <span>{{ item.product }}</span>
-              </p>
-              <p class="request-note">{{ item.statusNote }}</p>
-            </div>
-            <div class="request-actions">
-              <span class="request-tag">{{ item.updatedAt }}</span>
-              <RouterLink :to="{ name: item.targetRoute }" class="request-link">
+        <ul class="status-list">
+          <li v-for="item in column.items" :key="item.id">
+            <p class="status-title">{{ item.title }}</p>
+            <p class="status-meta">
+              <span>{{ item.requester }}</span>
+              <span aria-hidden="true">•</span>
+              <span>{{ item.product }}</span>
+            </p>
+            <p class="status-note">{{ item.statusNote }}</p>
+            <div class="status-actions">
+              <span class="status-tag">{{ item.updatedAt }}</span>
+              <RouterLink :to="{ name: item.targetRoute }" class="card-link">
                 {{ item.targetLabel }}
               </RouterLink>
             </div>
           </li>
         </ul>
-
-        <footer class="column-footer">
+        <footer>
           <RouterLink :to="{ name: column.footerRoute }" class="footer-link">
             {{ column.footerLabel }}
           </RouterLink>
-          <p class="footer-note">{{ column.footerNote }}</p>
+          <p class="summary-note">{{ column.footerNote }}</p>
         </footer>
+      </article>
+
+      <article class="workspace-card wide" aria-labelledby="followups-title">
+        <header>
+          <h2 id="followups-title">İlgili İşlemler</h2>
+          <p>Talep akışını destekleyen modüllere hızlı geçiş yapın.</p>
+        </header>
+        <div class="quick-actions">
+          <RouterLink :to="{ name: 'inventory-tracking' }">
+            Teslim edilen ürünleri kaydet <span aria-hidden="true">→</span>
+          </RouterLink>
+          <RouterLink :to="{ name: 'scrap-management' }">
+            Hurda değerlendirmelerini gözden geçir <span aria-hidden="true">→</span>
+          </RouterLink>
+          <RouterLink :to="{ name: 'knowledge-base' }">
+            Talep onay rehberini aç <span aria-hidden="true">→</span>
+          </RouterLink>
+        </div>
       </article>
     </div>
 
@@ -87,14 +101,9 @@
           <RouterLink :to="{ name: 'records' }">Kayıtlar</RouterLink> bölümünde loglanır.
         </li>
       </ol>
-
-      <div class="workflow-actions">
-        <RouterLink :to="{ name: 'knowledge-base' }" class="workflow-link">
-          İlgili dokümanları aç
-        </RouterLink>
-        <RouterLink :to="{ name: 'admin-panel' }" class="workflow-link">
-          Onay kurallarını düzenle
-        </RouterLink>
+      <div class="chip-group">
+        <RouterLink :to="{ name: 'admin-panel' }" class="primary-action">Onay kurallarını düzenle</RouterLink>
+        <RouterLink :to="{ name: 'profile' }" class="secondary-link">Onaycı listeni kontrol et</RouterLink>
       </div>
     </article>
   </section>
@@ -106,6 +115,24 @@ import { RouterLink } from 'vue-router';
 
 type RequestStatus = 'pending' | 'delivered' | 'cancelled';
 
+type RouteName =
+  | 'stock-tracking'
+  | 'license-tracking'
+  | 'inventory-tracking'
+  | 'printer-tracking'
+  | 'records'
+  | 'scrap-management'
+  | 'admin-panel'
+  | 'knowledge-base'
+  | 'profile';
+
+interface HeroMetric {
+  id: string;
+  label: string;
+  value: string;
+  note: string;
+}
+
 interface RequestItem {
   id: string;
   title: string;
@@ -114,7 +141,7 @@ interface RequestItem {
   status: RequestStatus;
   updatedAt: string;
   statusNote: string;
-  targetRoute: string;
+  targetRoute: RouteName;
   targetLabel: string;
 }
 
@@ -124,7 +151,7 @@ interface BaseColumn {
   description: string;
   accent: string;
   footerLabel: string;
-  footerRoute: string;
+  footerRoute: RouteName;
   footerNote: string;
 }
 
@@ -234,266 +261,20 @@ const requestColumns = computed(() =>
   }))
 );
 
-const statusSummary = computed(() =>
-  requestColumns.value.map((column) => ({
-    id: column.id,
-    title: column.title,
-    count: column.items.length
-  }))
-);
-
 const totalRequests = computed(() => requests.length);
+
+const heroMetrics = computed<HeroMetric[]>(() => {
+  const pendingCount = requestColumns.value.find((column) => column.id === 'pending')?.items.length ?? 0;
+  const deliveredCount = requestColumns.value.find((column) => column.id === 'delivered')?.items.length ?? 0;
+  const cancelledCount = requestColumns.value.find((column) => column.id === 'cancelled')?.items.length ?? 0;
+
+  return [
+    { id: 'total', label: 'Toplam Talep', value: String(totalRequests.value), note: 'Aktif kayıt sayısı' },
+    { id: 'pending', label: 'Bekleyen', value: String(pendingCount), note: 'Onay bekleyen talep' },
+    { id: 'delivered', label: 'Karşılanan', value: String(deliveredCount), note: 'Teslim edilip envantere işlenen' },
+    { id: 'cancelled', label: 'İptal', value: String(cancelledCount), note: 'Hurda veya iptal edilen' }
+  ];
+});
 </script>
 
-<style scoped>
-.page-section {
-  display: grid;
-  gap: 2.5rem;
-  color: #0f172a;
-}
-
-.page-header {
-  display: grid;
-  gap: 1.75rem;
-}
-
-.page-header h1 {
-  margin: 0 0 0.75rem;
-  font-size: 2rem;
-}
-
-.page-intro {
-  margin: 0;
-  max-width: 760px;
-  font-size: 1.05rem;
-  color: #475569;
-  line-height: 1.6;
-}
-
-.status-summary {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-}
-
-.summary-card {
-  padding: 1.5rem;
-  border-radius: 18px;
-  background: #ffffff;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  box-shadow: 0 18px 35px rgba(15, 23, 42, 0.08);
-  display: grid;
-  gap: 0.5rem;
-}
-
-.summary-label {
-  font-size: 0.9rem;
-  color: #64748b;
-}
-
-.summary-count {
-  margin: 0;
-  font-size: 2rem;
-  font-weight: 600;
-}
-
-.summary-caption {
-  font-size: 0.85rem;
-  color: #94a3b8;
-}
-
-.status-board {
-  display: grid;
-  gap: 1.5rem;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-}
-
-.status-column {
-  position: relative;
-  display: grid;
-  gap: 1.5rem;
-  padding: 2rem;
-  border-radius: 22px;
-  background: #ffffff;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  box-shadow: 0 24px 45px rgba(15, 23, 42, 0.1);
-  overflow: hidden;
-}
-
-.status-column::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 22px;
-  border: 2px solid var(--column-accent);
-  opacity: 0.1;
-  pointer-events: none;
-}
-
-.column-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-}
-
-.column-header h2 {
-  margin: 0 0 0.4rem;
-  font-size: 1.35rem;
-}
-
-.column-header p {
-  margin: 0;
-  color: #475569;
-  line-height: 1.5;
-}
-
-.column-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.35rem 0.75rem;
-  border-radius: 999px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--column-accent);
-  background: rgba(148, 163, 184, 0.15);
-}
-
-.request-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 1rem;
-}
-
-.request-item {
-  padding: 1.25rem;
-  border-radius: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  display: grid;
-  gap: 0.75rem;
-  background: rgba(241, 245, 249, 0.45);
-}
-
-.request-meta {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.request-title {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.request-details {
-  margin: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  font-size: 0.9rem;
-  color: #64748b;
-}
-
-.request-note {
-  margin: 0;
-  font-size: 0.9rem;
-  color: #475569;
-}
-
-.request-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-}
-
-.request-tag {
-  font-size: 0.85rem;
-  color: #64748b;
-  background: rgba(148, 163, 184, 0.2);
-  padding: 0.35rem 0.75rem;
-  border-radius: 999px;
-}
-
-.request-link {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #2563eb;
-}
-
-.column-footer {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.footer-link {
-  color: #0f172a;
-  font-weight: 600;
-}
-
-.footer-note {
-  margin: 0;
-  color: #64748b;
-  font-size: 0.85rem;
-}
-
-.workflow-card {
-  padding: 2.5rem;
-  border-radius: 24px;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(37, 99, 235, 0.08));
-  border: 1px solid rgba(37, 99, 235, 0.15);
-  box-shadow: 0 25px 45px rgba(15, 23, 42, 0.1);
-  display: grid;
-  gap: 1.5rem;
-}
-
-.workflow-card h2 {
-  margin: 0;
-  font-size: 1.45rem;
-}
-
-.workflow-steps {
-  margin: 0;
-  padding-left: 1.2rem;
-  display: grid;
-  gap: 0.75rem;
-  color: #1e293b;
-  line-height: 1.6;
-}
-
-.workflow-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-.workflow-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.65rem 1.1rem;
-  border-radius: 999px;
-  background: #1d4ed8;
-  color: #ffffff;
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.workflow-link:hover {
-  background: #1e3a8a;
-}
-
-@media (max-width: 960px) {
-  .request-actions {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .workflow-card {
-    padding: 2rem;
-  }
-}
-</style>
+<style scoped src="@/styles/workspace.css"></style>

@@ -1,80 +1,114 @@
 <template>
-  <section class="page-section" aria-labelledby="knowledge-title">
-    <header class="page-header">
-      <div>
-        <h1 id="knowledge-title">Bilgi Bankası</h1>
-        <p class="page-intro">
-          Ekip içi dokümanlar, prosedürler ve hızlı rehberler burada tutulur. Herkesin erişebildiği
-          merkezi bilgi havuzu sayesinde talep süreci ve operasyonlar tek kaynaktan yönetilir.
-        </p>
-      </div>
-
-      <div class="page-tools">
-        <div class="search-placeholder" role="search">
-          <span aria-hidden="true">🔍</span>
-          <div>
-            <p class="search-title">Başlık veya etikete göre ara</p>
-            <p class="search-caption">Örn: "Hurda prosedürü" ya da "ldap bağlanma"</p>
-          </div>
+  <section class="workspace-page" aria-labelledby="knowledge-title">
+    <article class="workspace-hero">
+      <header class="hero-header">
+        <div class="hero-heading">
+          <span class="hero-badge">Doküman Merkezi</span>
+          <h1 id="knowledge-title">Bilgi Bankası</h1>
+          <p class="hero-intro">
+            Ekip içi dokümanlar, prosedürler ve hızlı rehberler burada tutulur. Herkesin erişebildiği
+            merkezi bilgi havuzu sayesinde talep süreci ve operasyonlar tek kaynaktan yönetilir.
+          </p>
         </div>
-        <RouterLink :to="{ name: 'admin-panel' }" class="page-tool-link">
-          Yetkilendirmeleri düzenle
-        </RouterLink>
-      </div>
-    </header>
+        <div class="hero-actions">
+          <RouterLink :to="{ name: 'request-tracking' }" class="primary-action">
+            Talep rehberini aç
+          </RouterLink>
+          <RouterLink :to="{ name: 'admin-panel' }" class="secondary-link">Yetkilendirmeleri düzenle</RouterLink>
+        </div>
+      </header>
+      <dl class="hero-metrics">
+        <div v-for="metric in heroMetrics" :key="metric.id">
+          <dt>{{ metric.label }}</dt>
+          <dd>{{ metric.value }}</dd>
+          <p class="metric-note">{{ metric.note }}</p>
+        </div>
+      </dl>
+    </article>
 
-    <div class="knowledge-grid">
-      <article
-        v-for="category in categories"
-        :key="category.id"
-        class="knowledge-card"
-      >
-        <header class="card-header">
-          <span class="card-icon" aria-hidden="true">{{ category.icon }}</span>
-          <div>
-            <h2>{{ category.title }}</h2>
-            <p>{{ category.summary }}</p>
-          </div>
+    <div class="workspace-grid columns-2">
+      <article class="workspace-card" aria-labelledby="library-title">
+        <header>
+          <h2 id="library-title">Doküman Kategorileri</h2>
+          <p>Envanter, lisans ve destek ekipleri için öne çıkan rehberler.</p>
         </header>
-        <ul class="article-list">
-          <li v-for="article in category.articles" :key="article">
-            {{ article }}
+        <ul class="resource-list">
+          <li v-for="category in categories" :key="category.id" class="resource-item">
+            <span class="resource-icon" aria-hidden="true">{{ category.icon }}</span>
+            <div class="resource-body">
+              <p class="resource-title">{{ category.title }}</p>
+              <p class="resource-note">{{ category.summary }}</p>
+              <RouterLink :to="{ name: category.routeName }" class="resource-meta">
+                {{ category.linkLabel }}
+              </RouterLink>
+              <p class="resource-meta">{{ category.helperText }}</p>
+            </div>
           </li>
         </ul>
-        <footer class="card-footer">
-          <RouterLink :to="{ name: category.routeName }" class="card-link">
-            {{ category.linkLabel }}
+      </article>
+
+      <article class="workspace-card" aria-labelledby="search-title">
+        <header>
+          <h2 id="search-title">Hızlı Arama</h2>
+          <p>Prosedürleri etiket veya konu başlığına göre bulun.</p>
+        </header>
+        <div class="quick-actions">
+          <RouterLink :to="{ name: 'scrap-management' }">
+            Hurda prosedürlerini göster <span aria-hidden="true">→</span>
           </RouterLink>
-          <p>{{ category.helperText }}</p>
+          <RouterLink :to="{ name: 'printer-tracking' }">
+            Yazıcı bakım kılavuzlarını aç <span aria-hidden="true">→</span>
+          </RouterLink>
+          <RouterLink :to="{ name: 'license-tracking' }">
+            Lisans denetim listesine git <span aria-hidden="true">→</span>
+          </RouterLink>
+        </div>
+        <footer>
+          <RouterLink :to="{ name: 'records' }" class="card-link">Denetim raporlarına bağlan</RouterLink>
         </footer>
       </article>
 
-      <aside class="knowledge-side">
-        <section class="callout" aria-labelledby="callout-title">
-          <h2 id="callout-title">Talep Yönetimi ile Entegrasyon</h2>
-          <p>
-            Talep açan kullanıcılar ilgili dokümanları otomatik olarak görür. Örneğin hurda talepleri
-            için <RouterLink :to="{ name: 'scrap-management' }">Hurdalar</RouterLink> sayfasındaki
-            prosedürler öne çıkarılır.
-          </p>
-        </section>
-
-        <section class="contribution" aria-labelledby="contribution-title">
+      <article class="workspace-card" aria-labelledby="contribution-title">
+        <header>
           <h2 id="contribution-title">Güncel Katkılar</h2>
-          <ul>
-            <li v-for="entry in contributions" :key="entry.id">
-              <p class="contribution-title">{{ entry.title }}</p>
-              <p class="contribution-meta">
-                {{ entry.author }} • {{ entry.updatedAt }}
-              </p>
-              <RouterLink :to="{ name: entry.relatedRoute }" class="contribution-link">
-                {{ entry.relatedLabel }}
-              </RouterLink>
-            </li>
-          </ul>
-        </section>
-      </aside>
+          <p>Son güncellenen içerikler ve ilgili iş akışları.</p>
+        </header>
+        <ul class="insight-list">
+          <li v-for="entry in contributions" :key="entry.id">
+            <div>
+              <p class="insight-title">{{ entry.title }}</p>
+              <p class="insight-note">{{ entry.author }} • {{ entry.updatedAt }}</p>
+            </div>
+            <RouterLink :to="{ name: entry.relatedRoute }" class="insight-link">
+              {{ entry.relatedLabel }}
+            </RouterLink>
+          </li>
+        </ul>
+      </article>
     </div>
+
+    <article class="workflow-card">
+      <h2>Bilgi Paylaşım Döngüsü</h2>
+      <p>
+        Talep modülünde açılan her kayıt ilgili bilgi bankası dokümanına bağlanır ve ekip üyelerine
+        bildirilir. Güncellenen içerikler <RouterLink :to="{ name: 'records' }">Kayıtlar</RouterLink>
+        modülünde denetlenir.
+      </p>
+      <ol class="workflow-steps">
+        <li>
+          Yeni doküman taslağı <RouterLink :to="{ name: 'request-tracking' }">Talep Takip</RouterLink>
+          üzerinden onaya sunulur.
+        </li>
+        <li>
+          Onaylanan içerikler <RouterLink :to="{ name: 'inventory-tracking' }">Envanter</RouterLink> ve
+          <RouterLink :to="{ name: 'stock-tracking' }">Stok</RouterLink> ekranlarında öne çıkarılır.
+        </li>
+        <li>
+          Geri bildirimler <RouterLink :to="{ name: 'admin-panel' }">Admin Paneli</RouterLink> aracılığıyla
+          toplanır ve versiyonlama tamamlanır.
+        </li>
+      </ol>
+    </article>
   </section>
 </template>
 
@@ -88,14 +122,21 @@ type RouteName =
   | 'request-tracking'
   | 'scrap-management'
   | 'admin-panel'
-  | 'records';
+  | 'records'
+  | 'stock-tracking';
+
+interface HeroMetric {
+  id: string;
+  label: string;
+  value: string;
+  note: string;
+}
 
 interface CategoryItem {
   id: string;
   title: string;
   summary: string;
   icon: string;
-  articles: string[];
   routeName: RouteName;
   linkLabel: string;
   helperText: string;
@@ -110,17 +151,18 @@ interface ContributionItem {
   relatedLabel: string;
 }
 
+const heroMetrics: HeroMetric[] = [
+  { id: 'docs', label: 'Aktif Doküman', value: '128', note: 'Bu ay güncellenen içerik sayısı' },
+  { id: 'teams', label: 'Erişen Ekip', value: '6', note: 'Operasyon ekibi paylaşımları' },
+  { id: 'reviews', label: 'Bekleyen İnceleme', value: '4', note: 'Onay bekleyen taslak' }
+];
+
 const categories: CategoryItem[] = [
   {
     id: 'inventory',
     title: 'Envanter İşlemleri',
     summary: 'Ürün girişleri, zimmet süreçleri ve teslim belgeleri.',
     icon: '📦',
-    articles: [
-      'Envanter kartı oluşturma adımları',
-      'Teslim tutanağı şablonu',
-      'Yeni ürün seri numarası doğrulama'
-    ],
     routeName: 'inventory-tracking',
     linkLabel: 'Envanter modülünü aç',
     helperText: 'Talep sonucu gelen ürünleri envantere aktarmayı unutmayın.'
@@ -130,11 +172,6 @@ const categories: CategoryItem[] = [
     title: 'Lisans ve Hesap Yönetimi',
     summary: 'Yazılım lisansları, kullanıcı yetkileri ve denetimler.',
     icon: '🪪',
-    articles: [
-      'Yeni kullanıcı lisans talep formu',
-      'Lisans yenileme planı',
-      'Audit trail raporlama rehberi'
-    ],
     routeName: 'license-tracking',
     linkLabel: 'Lisans takibini görüntüle',
     helperText: 'Talep edilen yetkilerin onayı ve kayıtları burada tutulur.'
@@ -144,11 +181,6 @@ const categories: CategoryItem[] = [
     title: 'Destek ve Hızlı Çözümler',
     summary: 'Arıza giderme, yazıcı bakımı ve sık sorulan sorular.',
     icon: '🛠️',
-    articles: [
-      'Yazıcı kalibrasyonu nasıl yapılır?',
-      'Çağrı merkezi kulaklığı sorun giderme',
-      'Destek talebi SLA politikası'
-    ],
     routeName: 'printer-tracking',
     linkLabel: 'Yazıcı takibini aç',
     helperText: 'Hurdaya ayrılan yazıcılar için ilgili prosedürlere bağlantı verilir.'
@@ -183,201 +215,4 @@ const contributions: ContributionItem[] = [
 ];
 </script>
 
-<style scoped>
-.page-section {
-  display: grid;
-  gap: 2.5rem;
-  color: #0f172a;
-}
-
-.page-header {
-  display: grid;
-  gap: 1.75rem;
-}
-
-.page-header h1 {
-  margin: 0 0 0.75rem;
-  font-size: 2rem;
-}
-
-.page-intro {
-  margin: 0;
-  max-width: 760px;
-  font-size: 1.05rem;
-  color: #475569;
-  line-height: 1.6;
-}
-
-.page-tools {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.search-placeholder {
-  flex: 1 1 320px;
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  padding: 1rem 1.5rem;
-  border-radius: 18px;
-  border: 1px dashed rgba(37, 99, 235, 0.4);
-  background: rgba(59, 130, 246, 0.08);
-}
-
-.search-placeholder span {
-  font-size: 1.5rem;
-}
-
-.search-title {
-  margin: 0;
-  font-weight: 600;
-}
-
-.search-caption {
-  margin: 0;
-  font-size: 0.85rem;
-  color: #64748b;
-}
-
-.page-tool-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.75rem 1.3rem;
-  border-radius: 999px;
-  background: #1d4ed8;
-  color: #ffffff;
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.knowledge-grid {
-  display: grid;
-  gap: 1.75rem;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-}
-
-.knowledge-card {
-  padding: 2rem;
-  border-radius: 22px;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  box-shadow: 0 24px 45px rgba(15, 23, 42, 0.1);
-  background: #ffffff;
-  display: grid;
-  gap: 1.5rem;
-}
-
-.card-header {
-  display: flex;
-  gap: 1.25rem;
-}
-
-.card-header h2 {
-  margin: 0 0 0.4rem;
-  font-size: 1.35rem;
-}
-
-.card-header p {
-  margin: 0;
-  color: #475569;
-  line-height: 1.5;
-}
-
-.card-icon {
-  font-size: 2rem;
-}
-
-.article-list {
-  margin: 0;
-  padding-left: 1.2rem;
-  display: grid;
-  gap: 0.6rem;
-  color: #475569;
-}
-
-.card-footer {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.card-link {
-  color: #2563eb;
-  font-weight: 600;
-}
-
-.card-footer p {
-  margin: 0;
-  color: #64748b;
-  font-size: 0.85rem;
-}
-
-.knowledge-side {
-  display: grid;
-  gap: 1.5rem;
-}
-
-.callout,
-.contribution {
-  padding: 2rem;
-  border-radius: 22px;
-  border: 1px solid rgba(37, 99, 235, 0.15);
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(14, 165, 233, 0.08));
-  box-shadow: 0 24px 45px rgba(15, 23, 42, 0.1);
-  display: grid;
-  gap: 1rem;
-}
-
-.callout h2,
-.contribution h2 {
-  margin: 0;
-  font-size: 1.3rem;
-}
-
-.callout p,
-.contribution p {
-  margin: 0;
-  color: #1f2937;
-  line-height: 1.6;
-}
-
-.contribution ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 1rem;
-}
-
-.contribution-title {
-  margin: 0;
-  font-weight: 600;
-}
-
-.contribution-meta {
-  margin: 0;
-  font-size: 0.85rem;
-  color: #64748b;
-}
-
-.contribution-link {
-  color: #1d4ed8;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-@media (max-width: 1080px) {
-  .knowledge-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 720px) {
-  .page-tools {
-    flex-direction: column;
-    align-items: stretch;
-  }
-}
-</style>
+<style scoped src="@/styles/workspace.css"></style>

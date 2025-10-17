@@ -1,18 +1,37 @@
 <template>
-  <section class="page-section" aria-labelledby="inventory-title">
-    <header class="page-header">
-      <h1 id="inventory-title">Envanter Takip</h1>
-      <p class="page-intro">
-        Bilgi işlem envanterinizi lokasyon, departman ve zimmet alanına göre yönetin. Stok
-        hareketlerinden gelen cihazları hızla sahiplerine atayın ve lisans, yazıcı, stok modülleriyle
-        tam entegrasyon sağlayın.
-      </p>
-    </header>
+  <section class="workspace-page" aria-labelledby="inventory-title">
+    <article class="workspace-hero">
+      <header class="hero-header">
+        <div class="hero-heading">
+          <span class="hero-badge">Zimmet Merkezi</span>
+          <h1 id="inventory-title">Envanter Takip</h1>
+          <p class="hero-intro">
+            Bilgi işlem envanterinizi lokasyon, departman ve zimmet alanına göre yönetin. Stok
+            hareketlerinden gelen cihazları hızla sahiplerine atayın ve lisans, yazıcı, stok modülleriyle
+            tam entegrasyon sağlayın.
+          </p>
+        </div>
+        <div class="hero-actions">
+          <RouterLink :to="{ name: 'stock-tracking' }" class="primary-action">Stok aktarımını incele</RouterLink>
+          <RouterLink :to="{ name: 'request-tracking' }" class="secondary-link">Talep kuyruğuna dön</RouterLink>
+        </div>
+      </header>
+      <dl class="hero-metrics">
+        <div v-for="metric in heroMetrics" :key="metric.id">
+          <dt>{{ metric.label }}</dt>
+          <dd>{{ metric.value }}</dd>
+          <p class="metric-note">{{ metric.note }}</p>
+        </div>
+      </dl>
+    </article>
 
-    <div class="page-panels">
-      <article class="page-card highlight" aria-labelledby="inventory-summary">
-        <h2 id="inventory-summary">Son Eklenen Cihazlar</h2>
-        <table class="data-table">
+    <div class="workspace-grid columns-2">
+      <article class="workspace-card table-card" aria-labelledby="inventory-summary">
+        <header>
+          <h2 id="inventory-summary">Son Eklenen Cihazlar</h2>
+          <p>Stoktan gelen ve zimmetlenmeyi bekleyen cihazların listesi.</p>
+        </header>
+        <table>
           <thead>
             <tr>
               <th scope="col">Varlık</th>
@@ -24,12 +43,12 @@
           <tbody>
             <tr v-for="item in inventoryItems" :key="item.assetId">
               <td>
-                <span class="asset-name">{{ item.name }}</span>
-                <span class="asset-meta">{{ item.assetId }}</span>
+                <span class="summary-title">{{ item.name }}</span>
+                <p class="summary-meta">{{ item.assetId }}</p>
               </td>
               <td>{{ item.department }}</td>
               <td>
-                <span class="status" :class="`status--${item.status}`">{{ statusLabels[item.status] }}</span>
+                <span class="status-chip">{{ statusLabels[item.status] }}</span>
               </td>
               <td>{{ item.updatedAt }}</td>
             </tr>
@@ -37,28 +56,33 @@
         </table>
       </article>
 
-      <article class="page-card" aria-labelledby="inventory-links">
-        <h2 id="inventory-links">İlişkili Modüller</h2>
-        <p>
-          Stok modülünden gelen yeni cihazları zimmetlerken lisans eşleştirmesi yapabilir, arızalı
-          cihazları yazıcı ve talep modülleriyle eşleştirip kayıt tutabilirsiniz.
-        </p>
-        <nav class="link-grid" aria-label="İlişkili sayfalar">
-          <RouterLink v-for="link in relatedLinks" :key="link.title" :to="link.to" class="link-card">
-            <span class="link-title">{{ link.title }}</span>
-            <span class="link-meta">{{ link.description }}</span>
+      <article class="workspace-card" aria-labelledby="inventory-links">
+        <header>
+          <h2 id="inventory-links">İlişkili Modüller</h2>
+          <p>Envanter hareketlerini destekleyen diğer sayfalara yönelin.</p>
+        </header>
+        <div class="quick-actions">
+          <RouterLink v-for="link in relatedLinks" :key="link.title" :to="link.to">
+            {{ link.title }} <span aria-hidden="true">→</span>
           </RouterLink>
-        </nav>
+        </div>
+        <footer>
+          <RouterLink :to="{ name: 'knowledge-base' }" class="card-link">Zimmet prosedürlerini aç</RouterLink>
+        </footer>
       </article>
 
-      <article class="page-card" aria-labelledby="inventory-log">
-        <h2 id="inventory-log">Giriş / Çıkış Kayıtları</h2>
-        <ul class="log-list">
-          <li v-for="entry in movementLog" :key="entry.id" class="log-entry">
-            <span class="log-time">{{ entry.time }}</span>
-            <div class="log-content">
-              <p class="log-text">{{ entry.text }}</p>
-              <RouterLink v-if="entry.relatedRoute" class="log-link" :to="entry.relatedRoute">
+      <article class="workspace-card" aria-labelledby="inventory-log">
+        <header>
+          <h2 id="inventory-log">Giriş / Çıkış Kayıtları</h2>
+          <p>Envanterdeki değişikliklerin kronolojisi ve ilgili bağlantılar.</p>
+        </header>
+        <ul class="timeline">
+          <li v-for="entry in movementLog" :key="entry.id" class="timeline-entry">
+            <span class="timeline-dot" aria-hidden="true"></span>
+            <div class="timeline-content">
+              <p class="timeline-title">{{ entry.text }}</p>
+              <p class="timeline-meta">{{ entry.time }}</p>
+              <RouterLink v-if="entry.relatedRoute" :to="entry.relatedRoute" class="timeline-link">
                 Detaya git
               </RouterLink>
             </div>
@@ -66,11 +90,31 @@
         </ul>
       </article>
     </div>
+
+    <article class="workflow-card">
+      <h2>Zimmet Döngüsü</h2>
+      <ol class="workflow-steps">
+        <li>
+          Stoktan gelen cihazlar zimmetlenmeden önce <RouterLink :to="{ name: 'request-tracking' }">Talep</RouterLink>
+          onaylarına bağlanır.
+        </li>
+        <li>
+          Lisans ve yazıcı eşleştirmeleri tamamlandığında
+          <RouterLink :to="{ name: 'license-tracking' }">Lisans</RouterLink> ve
+          <RouterLink :to="{ name: 'printer-tracking' }">Yazıcı</RouterLink> modülleri bilgilendirilir.
+        </li>
+        <li>
+          Tüm hareketler <RouterLink :to="{ name: 'records' }">Kayıtlar</RouterLink> paneline aktarılır ve
+          ekiplerle paylaşılır.
+        </li>
+      </ol>
+    </article>
   </section>
 </template>
 
 <script setup lang="ts">
-import { RouterLink } from 'vue-router';
+import { computed } from 'vue';
+import { RouterLink, type RouteLocationRaw } from 'vue-router';
 
 const statusLabels = {
   assigned: 'Zimmetli',
@@ -80,12 +124,31 @@ const statusLabels = {
 
 type InventoryStatus = keyof typeof statusLabels;
 
+interface HeroMetric {
+  id: string;
+  label: string;
+  value: string;
+  note: string;
+}
+
 interface InventoryItem {
   assetId: string;
   name: string;
   department: string;
   status: InventoryStatus;
   updatedAt: string;
+}
+
+interface RelatedLink {
+  title: string;
+  to: RouteLocationRaw;
+}
+
+interface MovementLogEntry {
+  id: number;
+  time: string;
+  text: string;
+  relatedRoute?: RouteLocationRaw;
 }
 
 const inventoryItems: InventoryItem[] = [
@@ -112,36 +175,24 @@ const inventoryItems: InventoryItem[] = [
   }
 ];
 
-interface RelatedLink {
-  title: string;
-  description: string;
-  to: { name: string };
-}
+const heroMetrics = computed<HeroMetric[]>(() => {
+  const assigned = inventoryItems.filter((item) => item.status === 'assigned').length;
+  const pending = inventoryItems.filter((item) => item.status === 'pending').length;
+  const maintenance = inventoryItems.filter((item) => item.status === 'maintenance').length;
+
+  return [
+    { id: 'total', label: 'Toplam Kayıt', value: String(inventoryItems.length), note: 'Aktif envanter kartı' },
+    { id: 'assigned', label: 'Zimmetli', value: String(assigned), note: 'Teslim edilmiş cihaz' },
+    { id: 'pending', label: 'Atama Bekliyor', value: String(pending), note: 'Zimmet planı bekleyen' },
+    { id: 'maintenance', label: 'Bakımda', value: String(maintenance), note: 'Servis sürecindeki varlık' }
+  ];
+});
 
 const relatedLinks: RelatedLink[] = [
-  {
-    title: 'Stok Takip',
-    description: 'Yeni teslim alınan cihazları stoktan aktarın.',
-    to: { name: 'stock-tracking' }
-  },
-  {
-    title: 'Lisans Takip',
-    description: 'Cihazdaki yazılımları lisanslarla eşleştirin.',
-    to: { name: 'license-tracking' }
-  },
-  {
-    title: 'Yazıcı Takip',
-    description: 'Paylaşılan yazıcı zimmetlerini görüntüleyin.',
-    to: { name: 'printer-tracking' }
-  }
+  { title: 'Stok Takip', to: { name: 'stock-tracking' } },
+  { title: 'Lisans Takip', to: { name: 'license-tracking' } },
+  { title: 'Yazıcı Takip', to: { name: 'printer-tracking' } }
 ];
-
-interface MovementLogEntry {
-  id: number;
-  time: string;
-  text: string;
-  relatedRoute?: { name: string };
-}
 
 const movementLog: MovementLogEntry[] = [
   {
@@ -162,203 +213,6 @@ const movementLog: MovementLogEntry[] = [
     text: 'SRV-3012 cihazı bakım için talep modülüne aktarıldı.'
   }
 ];
-
 </script>
 
-<style scoped>
-.page-section {
-  display: grid;
-  gap: 2.5rem;
-  color: #0f172a;
-}
-
-.page-header h1 {
-  margin: 0 0 0.75rem;
-  font-size: 2rem;
-}
-
-.page-intro {
-  margin: 0;
-  max-width: 780px;
-  font-size: 1.05rem;
-  color: #475569;
-  line-height: 1.6;
-}
-
-.page-panels {
-  display: grid;
-  gap: 1.75rem;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-}
-
-.page-card {
-  padding: 2.25rem;
-  border-radius: 22px;
-  background: #ffffff;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  box-shadow: 0 24px 45px rgba(15, 23, 42, 0.08);
-  display: grid;
-  gap: 1.4rem;
-}
-
-.page-card.highlight {
-  grid-column: 1 / -1;
-}
-
-.page-card h2 {
-  margin: 0;
-  font-size: 1.4rem;
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.95rem;
-}
-
-.data-table thead th {
-  text-align: left;
-  color: #64748b;
-  font-weight: 600;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.3);
-}
-
-.data-table tbody td {
-  padding: 0.85rem 0;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
-  vertical-align: top;
-}
-
-.data-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.asset-name {
-  display: block;
-  font-weight: 600;
-}
-
-.asset-meta {
-  display: block;
-  font-size: 0.8rem;
-  color: #94a3b8;
-}
-
-.status {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.25rem 0.75rem;
-  border-radius: 999px;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.status::before {
-  content: '';
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-}
-
-.status--assigned {
-  color: #0f5132;
-  background: rgba(34, 197, 94, 0.15);
-}
-
-.status--assigned::before {
-  background: #22c55e;
-}
-
-.status--pending {
-  color: #713f12;
-  background: rgba(249, 115, 22, 0.18);
-}
-
-.status--pending::before {
-  background: #f97316;
-}
-
-.status--maintenance {
-  color: #1d4ed8;
-  background: rgba(59, 130, 246, 0.15);
-}
-
-.status--maintenance::before {
-  background: #3b82f6;
-}
-
-.link-grid {
-  display: grid;
-  gap: 1rem;
-}
-
-.link-card {
-  display: grid;
-  gap: 0.2rem;
-  padding: 1rem 1.2rem;
-  border-radius: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  color: inherit;
-  text-decoration: none;
-  transition: border-color 0.2s ease, transform 0.2s ease;
-}
-
-.link-card:hover {
-  border-color: #2563eb;
-  transform: translateY(-2px);
-}
-
-.link-title {
-  font-weight: 600;
-}
-
-.link-meta {
-  font-size: 0.85rem;
-  color: #64748b;
-}
-
-.log-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 1rem;
-}
-
-.log-entry {
-  display: grid;
-  gap: 0.25rem;
-}
-
-.log-time {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #94a3b8;
-}
-
-.log-content {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  align-items: flex-start;
-}
-
-.log-text {
-  margin: 0;
-  color: #475569;
-  line-height: 1.4;
-}
-
-.log-link {
-  font-size: 0.8rem;
-  color: #2563eb;
-  text-decoration: none;
-  font-weight: 600;
-}
-
-.log-link:hover {
-  text-decoration: underline;
-}
-</style>
+<style scoped src="@/styles/workspace.css"></style>

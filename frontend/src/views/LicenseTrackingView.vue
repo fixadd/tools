@@ -1,18 +1,37 @@
 <template>
-  <section class="page-section" aria-labelledby="license-title">
-    <header class="page-header">
-      <h1 id="license-title">Lisans Takip</h1>
-      <p class="page-intro">
-        Kurumsal lisans envanterinizi sürüm, kullanım hakkı ve yenileme tarihine göre takip edin.
-        Envanterdeki cihazlara atanmış anahtarları görün, stoktan gelen yeni kurulum taleplerini
-        bekletmeden lisanslayın.
-      </p>
-    </header>
+  <section class="workspace-page" aria-labelledby="license-title">
+    <article class="workspace-hero">
+      <header class="hero-header">
+        <div class="hero-heading">
+          <span class="hero-badge">Yetki Merkezi</span>
+          <h1 id="license-title">Lisans Takip</h1>
+          <p class="hero-intro">
+            Kurumsal lisans envanterinizi sürüm, kullanım hakkı ve yenileme tarihine göre takip edin.
+            Envanterdeki cihazlara atanmış anahtarları görün, stoktan gelen yeni kurulum taleplerini
+            bekletmeden lisanslayın.
+          </p>
+        </div>
+        <div class="hero-actions">
+          <RouterLink :to="{ name: 'inventory-tracking' }" class="primary-action">Zimmetleri kontrol et</RouterLink>
+          <RouterLink :to="{ name: 'request-tracking' }" class="secondary-link">Talep kuyruğunu aç</RouterLink>
+        </div>
+      </header>
+      <dl class="hero-metrics">
+        <div v-for="metric in heroMetrics" :key="metric.id">
+          <dt>{{ metric.label }}</dt>
+          <dd>{{ metric.value }}</dd>
+          <p class="metric-note">{{ metric.note }}</p>
+        </div>
+      </dl>
+    </article>
 
-    <div class="page-panels">
-      <article class="page-card highlight" aria-labelledby="license-overview">
-        <h2 id="license-overview">Aktif Lisanslar</h2>
-        <table class="data-table">
+    <div class="workspace-grid columns-2">
+      <article class="workspace-card table-card" aria-labelledby="license-overview">
+        <header>
+          <h2 id="license-overview">Aktif Lisanslar</h2>
+          <p>Ataması yapılan veya yenileme sürecinde olan lisans anahtarlarının özeti.</p>
+        </header>
+        <table>
           <thead>
             <tr>
               <th scope="col">Ürün</th>
@@ -24,12 +43,12 @@
           <tbody>
             <tr v-for="license in licenseList" :key="license.key">
               <td>
-                <span class="asset-name">{{ license.product }}</span>
-                <span class="asset-meta">Anahtar: {{ license.key }}</span>
+                <span class="summary-title">{{ license.product }}</span>
+                <p class="summary-meta">Anahtar: {{ license.key }}</p>
               </td>
               <td>{{ license.assignedTo }}</td>
               <td>
-                <span class="status" :class="`status--${license.status}`">{{ statusLabels[license.status] }}</span>
+                <span class="status-chip">{{ statusLabels[license.status] }}</span>
               </td>
               <td>{{ license.renewal }}</td>
             </tr>
@@ -37,28 +56,33 @@
         </table>
       </article>
 
-      <article class="page-card" aria-labelledby="license-actions">
-        <h2 id="license-actions">Modüller Arası Akış</h2>
-        <p>
-          Talep modülündeki yazılım istekleri stokta kurulum için bekler. Cihaz teslim edildiğinde
-          lisans anahtarını atayıp zimmet kaydını envanterde tamamlayabilirsiniz.
-        </p>
-        <nav class="link-grid" aria-label="İş akışı bağlantıları">
-          <RouterLink v-for="link in relatedLinks" :key="link.title" :to="link.to" class="link-card">
-            <span class="link-title">{{ link.title }}</span>
-            <span class="link-meta">{{ link.description }}</span>
+      <article class="workspace-card" aria-labelledby="license-actions">
+        <header>
+          <h2 id="license-actions">Modüller Arası Akış</h2>
+          <p>Talep, stok ve envanter süreçleriyle lisans atamalarını senkronize edin.</p>
+        </header>
+        <div class="quick-actions">
+          <RouterLink v-for="link in relatedLinks" :key="link.title" :to="link.to">
+            {{ link.title }} <span aria-hidden="true">→</span>
           </RouterLink>
-        </nav>
+        </div>
+        <footer>
+          <RouterLink :to="{ name: 'knowledge-base' }" class="card-link">Lisans politikalarını aç</RouterLink>
+        </footer>
       </article>
 
-      <article class="page-card" aria-labelledby="license-log">
-        <h2 id="license-log">Lisans Hareketleri</h2>
-        <ul class="log-list">
-          <li v-for="entry in movementLog" :key="entry.id" class="log-entry">
-            <span class="log-time">{{ entry.time }}</span>
-            <div class="log-content">
-              <p class="log-text">{{ entry.text }}</p>
-              <RouterLink v-if="entry.relatedRoute" class="log-link" :to="entry.relatedRoute">
+      <article class="workspace-card" aria-labelledby="license-log">
+        <header>
+          <h2 id="license-log">Lisans Hareketleri</h2>
+          <p>Yenileme ve atama değişikliklerinin kronolojisi.</p>
+        </header>
+        <ul class="timeline">
+          <li v-for="entry in movementLog" :key="entry.id" class="timeline-entry">
+            <span class="timeline-dot" aria-hidden="true"></span>
+            <div class="timeline-content">
+              <p class="timeline-title">{{ entry.text }}</p>
+              <p class="timeline-meta">{{ entry.time }}</p>
+              <RouterLink v-if="entry.relatedRoute" :to="entry.relatedRoute" class="timeline-link">
                 Kayda git
               </RouterLink>
             </div>
@@ -66,11 +90,29 @@
         </ul>
       </article>
     </div>
+
+    <article class="workflow-card">
+      <h2>Lisans Döngüsü</h2>
+      <ol class="workflow-steps">
+        <li>
+          Talep modülünden gelen yazılım isteği onaylandığında stokta ilgili kurulum planlanır ve
+          lisans anahtarı rezerve edilir.
+        </li>
+        <li>
+          Kurulum tamamlandığında anahtar envanter kartına bağlanır ve sorumlu ekip bilgilendirilir.
+        </li>
+        <li>
+          Yenileme tarihleri <RouterLink :to="{ name: 'records' }">Kayıtlar</RouterLink> ve
+          <RouterLink :to="{ name: 'profile' }">Profil</RouterLink> bildirimleriyle takip edilir.
+        </li>
+      </ol>
+    </article>
   </section>
 </template>
 
 <script setup lang="ts">
-import { RouterLink } from 'vue-router';
+import { computed } from 'vue';
+import { RouterLink, type RouteLocationRaw } from 'vue-router';
 
 const statusLabels = {
   active: 'Aktif',
@@ -80,12 +122,31 @@ const statusLabels = {
 
 type LicenseStatus = keyof typeof statusLabels;
 
+interface HeroMetric {
+  id: string;
+  label: string;
+  value: string;
+  note: string;
+}
+
 interface LicenseRow {
   key: string;
   product: string;
   assignedTo: string;
   status: LicenseStatus;
   renewal: string;
+}
+
+interface RelatedLink {
+  title: string;
+  to: RouteLocationRaw;
+}
+
+interface MovementLogEntry {
+  id: number;
+  time: string;
+  text: string;
+  relatedRoute?: RouteLocationRaw;
 }
 
 const licenseList: LicenseRow[] = [
@@ -112,36 +173,24 @@ const licenseList: LicenseRow[] = [
   }
 ];
 
-interface RelatedLink {
-  title: string;
-  description: string;
-  to: { name: string };
-}
+const heroMetrics = computed<HeroMetric[]>(() => {
+  const active = licenseList.filter((license) => license.status === 'active').length;
+  const warning = licenseList.filter((license) => license.status === 'warning').length;
+  const available = licenseList.filter((license) => license.status === 'available').length;
+
+  return [
+    { id: 'total', label: 'Toplam Lisans', value: String(licenseList.length), note: 'Takip edilen ürün' },
+    { id: 'active', label: 'Aktif', value: String(active), note: 'Kullanımda olan lisans' },
+    { id: 'warning', label: 'Yenileme Uyarısı', value: String(warning), note: 'Yaklaşan yenileme' },
+    { id: 'available', label: 'Bekleyen Atama', value: String(available), note: 'Rezerve anahtar' }
+  ];
+});
 
 const relatedLinks: RelatedLink[] = [
-  {
-    title: 'Stok Takip',
-    description: 'Kurulum bekleyen yazılımları stok üzerinden yönetin.',
-    to: { name: 'stock-tracking' }
-  },
-  {
-    title: 'Envanter Takip',
-    description: 'Lisans atanan cihazların zimmetini doğrulayın.',
-    to: { name: 'inventory-tracking' }
-  },
-  {
-    title: 'Talep Takip',
-    description: 'Yeni yazılım taleplerini değerlendirin.',
-    to: { name: 'request-tracking' }
-  }
+  { title: 'Stok Takip', to: { name: 'stock-tracking' } },
+  { title: 'Envanter Takip', to: { name: 'inventory-tracking' } },
+  { title: 'Talep Takip', to: { name: 'request-tracking' } }
 ];
-
-interface MovementLogEntry {
-  id: number;
-  time: string;
-  text: string;
-  relatedRoute?: { name: string };
-}
 
 const movementLog: MovementLogEntry[] = [
   {
@@ -163,203 +212,6 @@ const movementLog: MovementLogEntry[] = [
     relatedRoute: { name: 'stock-tracking' }
   }
 ];
-
 </script>
 
-<style scoped>
-.page-section {
-  display: grid;
-  gap: 2.5rem;
-  color: #0f172a;
-}
-
-.page-header h1 {
-  margin: 0 0 0.75rem;
-  font-size: 2rem;
-}
-
-.page-intro {
-  margin: 0;
-  max-width: 780px;
-  font-size: 1.05rem;
-  color: #475569;
-  line-height: 1.6;
-}
-
-.page-panels {
-  display: grid;
-  gap: 1.75rem;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-}
-
-.page-card {
-  padding: 2.25rem;
-  border-radius: 22px;
-  background: #ffffff;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  box-shadow: 0 24px 45px rgba(15, 23, 42, 0.08);
-  display: grid;
-  gap: 1.4rem;
-}
-
-.page-card.highlight {
-  grid-column: 1 / -1;
-}
-
-.page-card h2 {
-  margin: 0;
-  font-size: 1.4rem;
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.95rem;
-}
-
-.data-table thead th {
-  text-align: left;
-  color: #64748b;
-  font-weight: 600;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.3);
-}
-
-.data-table tbody td {
-  padding: 0.85rem 0;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
-  vertical-align: top;
-}
-
-.data-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.asset-name {
-  display: block;
-  font-weight: 600;
-}
-
-.asset-meta {
-  display: block;
-  font-size: 0.8rem;
-  color: #94a3b8;
-}
-
-.status {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.25rem 0.75rem;
-  border-radius: 999px;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.status::before {
-  content: '';
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-}
-
-.status--active {
-  color: #0f5132;
-  background: rgba(34, 197, 94, 0.15);
-}
-
-.status--active::before {
-  background: #22c55e;
-}
-
-.status--warning {
-  color: #78350f;
-  background: rgba(251, 191, 36, 0.18);
-}
-
-.status--warning::before {
-  background: #fbbf24;
-}
-
-.status--available {
-  color: #1d4ed8;
-  background: rgba(59, 130, 246, 0.15);
-}
-
-.status--available::before {
-  background: #3b82f6;
-}
-
-.link-grid {
-  display: grid;
-  gap: 1rem;
-}
-
-.link-card {
-  display: grid;
-  gap: 0.2rem;
-  padding: 1rem 1.2rem;
-  border-radius: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  color: inherit;
-  text-decoration: none;
-  transition: border-color 0.2s ease, transform 0.2s ease;
-}
-
-.link-card:hover {
-  border-color: #2563eb;
-  transform: translateY(-2px);
-}
-
-.link-title {
-  font-weight: 600;
-}
-
-.link-meta {
-  font-size: 0.85rem;
-  color: #64748b;
-}
-
-.log-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 1rem;
-}
-
-.log-entry {
-  display: grid;
-  gap: 0.25rem;
-}
-
-.log-time {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #94a3b8;
-}
-
-.log-content {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  align-items: flex-start;
-}
-
-.log-text {
-  margin: 0;
-  color: #475569;
-  line-height: 1.4;
-}
-
-.log-link {
-  font-size: 0.8rem;
-  color: #2563eb;
-  text-decoration: none;
-  font-weight: 600;
-}
-
-.log-link:hover {
-  text-decoration: underline;
-}
-</style>
+<style scoped src="@/styles/workspace.css"></style>
