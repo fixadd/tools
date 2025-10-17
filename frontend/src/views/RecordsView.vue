@@ -1,27 +1,33 @@
 <template>
-  <section class="page-section" aria-labelledby="records-title">
-    <header class="page-header">
-      <div>
-        <h1 id="records-title">Kayıtlar</h1>
-        <p class="page-intro">
-          Sistem genelinde yapılan ekleme, silme ve güncelleme işlemlerini tek ekrandan takip edin.
-          Modüller arası bağlantılar sayesinde hangi kaynağın hangi etkiyi oluşturduğunu görün.
-        </p>
-      </div>
-      <div class="filter-group" role="toolbar" aria-label="Kayıt filtreleri">
-        <button
-          v-for="filter in filters"
-          :key="filter.id"
-          type="button"
-          class="filter-button"
-        >
-          {{ filter.label }}
-        </button>
-      </div>
-    </header>
+  <section class="workspace-page" aria-labelledby="records-title">
+    <article class="workspace-hero">
+      <header class="hero-header">
+        <div class="hero-heading">
+          <span class="hero-badge">Denetim Merkezi</span>
+          <h1 id="records-title">Kayıtlar</h1>
+          <p class="hero-intro">
+            Sistem genelinde yapılan ekleme, silme ve güncelleme işlemlerini tek panelde takip edin.
+            Modüller arası bağlantılar sayesinde hangi kaynağın hangi etkiyi oluşturduğunu görün.
+          </p>
+        </div>
+        <div class="hero-actions">
+          <RouterLink :to="{ name: 'knowledge-base' }" class="primary-action">
+            Denetim rehberini aç
+          </RouterLink>
+          <RouterLink :to="{ name: 'admin-panel' }" class="secondary-link">Admin hareketlerine git</RouterLink>
+        </div>
+      </header>
+      <dl class="hero-metrics">
+        <div v-for="metric in heroMetrics" :key="metric.id">
+          <dt>{{ metric.label }}</dt>
+          <dd>{{ metric.value }}</dd>
+          <p class="metric-note">{{ metric.note }}</p>
+        </div>
+      </dl>
+    </article>
 
-    <div class="records-grid">
-      <article class="records-card" aria-labelledby="timeline-title">
+    <div class="workspace-grid columns-2">
+      <article class="workspace-card" aria-labelledby="timeline-title">
         <header>
           <h2 id="timeline-title">Son İşlemler</h2>
           <p>Modüllerde gerçekleşen önemli hareketler kronolojik olarak listelenir.</p>
@@ -41,7 +47,7 @@
         </ul>
       </article>
 
-      <article class="records-card" aria-labelledby="insight-title">
+      <article class="workspace-card" aria-labelledby="insight-title">
         <header>
           <h2 id="insight-title">Öne Çıkan Kayıtlar</h2>
           <p>Operasyon ekipleri için dikkat edilmesi gereken değişikliklerin özeti.</p>
@@ -57,6 +63,11 @@
             </RouterLink>
           </li>
         </ul>
+        <footer>
+          <RouterLink :to="{ name: 'scrap-management' }" class="card-link">
+            Hurda raporlarını karşılaştır
+          </RouterLink>
+        </footer>
       </article>
     </div>
 
@@ -65,7 +76,8 @@
       <ol class="workflow-steps">
         <li>
           Talep, hurda veya admin modüllerinde yapılan değişiklikler otomatik olarak kayıt altına
-          alınır.
+          alınır ve <RouterLink :to="{ name: 'inventory-tracking' }">Envanter</RouterLink> modülüne
+          aktarılır.
         </li>
         <li>
           Kritik kayıtlar için bilgi bankasında ilgili dokümanlara bağlantı oluşturulur ve ekip
@@ -89,9 +101,11 @@ type RouteName =
   | 'inventory-tracking'
   | 'knowledge-base';
 
-interface FilterItem {
+interface HeroMetric {
   id: string;
   label: string;
+  value: string;
+  note: string;
 }
 
 interface LogEntry {
@@ -112,11 +126,10 @@ interface InsightItem {
   linkLabel: string;
 }
 
-const filters: FilterItem[] = [
-  { id: 'all', label: 'Tümü' },
-  { id: 'requests', label: 'Talepler' },
-  { id: 'scrap', label: 'Hurdalar' },
-  { id: 'admin', label: 'Admin İşlemleri' }
+const heroMetrics: HeroMetric[] = [
+  { id: 'week', label: 'Bu Hafta', value: '68', note: 'Loglanan işlem sayısı' },
+  { id: 'alerts', label: 'Uyarılar', value: '5', note: 'İncelenmesi gereken kayıt' },
+  { id: 'exports', label: 'Paylaşımlar', value: '3', note: 'Dışa aktarılan rapor' }
 ];
 
 const logs: LogEntry[] = [
@@ -167,212 +180,4 @@ const insights: InsightItem[] = [
 ];
 </script>
 
-<style scoped>
-.page-section {
-  display: grid;
-  gap: 2.5rem;
-  color: #0f172a;
-}
-
-.page-header {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1.5rem;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.page-header h1 {
-  margin: 0 0 0.75rem;
-  font-size: 2rem;
-}
-
-.page-intro {
-  margin: 0;
-  max-width: 760px;
-  font-size: 1.05rem;
-  color: #475569;
-  line-height: 1.6;
-}
-
-.filter-group {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.filter-button {
-  padding: 0.6rem 1.2rem;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  border-radius: 999px;
-  background: #ffffff;
-  color: #1f2937;
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.records-grid {
-  display: grid;
-  gap: 1.75rem;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-}
-
-.records-card {
-  padding: 2rem;
-  border-radius: 22px;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  box-shadow: 0 24px 45px rgba(15, 23, 42, 0.1);
-  background: #ffffff;
-  display: grid;
-  gap: 1.5rem;
-}
-
-.records-card header h2 {
-  margin: 0 0 0.4rem;
-  font-size: 1.35rem;
-}
-
-.records-card header p {
-  margin: 0;
-  color: #475569;
-  line-height: 1.5;
-}
-
-.timeline {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 1.5rem;
-}
-
-.timeline-entry {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 1rem;
-  position: relative;
-}
-
-.timeline-entry::before {
-  content: '';
-  position: absolute;
-  left: 0.38rem;
-  top: 0.75rem;
-  bottom: -1rem;
-  width: 2px;
-  background: rgba(148, 163, 184, 0.4);
-}
-
-.timeline-entry:last-child::before {
-  display: none;
-}
-
-.timeline-dot {
-  width: 0.75rem;
-  height: 0.75rem;
-  border-radius: 50%;
-  background: #2563eb;
-  margin-top: 0.25rem;
-}
-
-.timeline-content {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.timeline-title {
-  margin: 0;
-  font-weight: 600;
-}
-
-.timeline-meta {
-  margin: 0;
-  font-size: 0.85rem;
-  color: #64748b;
-}
-
-.timeline-note {
-  margin: 0;
-  font-size: 0.9rem;
-  color: #475569;
-}
-
-.timeline-link {
-  color: #2563eb;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.insight-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 1rem;
-}
-
-.insight-list li {
-  padding: 1.25rem;
-  border-radius: 16px;
-  background: rgba(241, 245, 249, 0.55);
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.insight-title {
-  margin: 0 0 0.35rem;
-  font-weight: 600;
-}
-
-.insight-note {
-  margin: 0;
-  color: #475569;
-  font-size: 0.9rem;
-}
-
-.insight-link {
-  color: #2563eb;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.workflow-card {
-  padding: 2.5rem;
-  border-radius: 24px;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(14, 116, 144, 0.08));
-  border: 1px solid rgba(37, 99, 235, 0.15);
-  box-shadow: 0 25px 45px rgba(15, 23, 42, 0.1);
-  display: grid;
-  gap: 1.25rem;
-}
-
-.workflow-card h2 {
-  margin: 0;
-  font-size: 1.4rem;
-}
-
-.workflow-steps {
-  margin: 0;
-  padding-left: 1.2rem;
-  display: grid;
-  gap: 0.75rem;
-  color: #1f2937;
-  line-height: 1.6;
-}
-
-@media (max-width: 960px) {
-  .records-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .timeline-entry::before {
-    bottom: -0.5rem;
-  }
-
-  .insight-list li {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-}
-</style>
+<style scoped src="@/styles/workspace.css"></style>
