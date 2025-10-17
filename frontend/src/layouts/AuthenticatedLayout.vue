@@ -2,25 +2,12 @@
   <div class="layout">
     <aside class="sidebar" aria-label="Ana navigasyon">
       <div class="sidebar-inner">
-        <div class="sidebar-top">
-          <div class="brand-card">
-            <div class="brand-avatar" aria-hidden="true">AT</div>
-            <div>
-              <p class="brand-eyebrow">Varlık Takip</p>
-              <h1>BT Yönetim Portalı</h1>
-              <p class="brand-caption">Tüm modüller tek bir panelde</p>
-            </div>
-          </div>
-
-          <RouterLink :to="{ name: 'profile' }" class="user-card">
-            <div class="user-avatar" aria-hidden="true">A</div>
-            <div class="user-meta">
-              <span class="user-name">{{ currentUser.name }}</span>
-              <span class="user-role">{{ currentUser.role }}</span>
-            </div>
-            <span class="user-status" :class="userStatusClass">{{ currentUser.status }}</span>
-          </RouterLink>
-        </div>
+        <header class="sidebar-header">
+          <h1 class="sidebar-title">BT Yönetim Portalı</h1>
+          <p class="sidebar-description">
+            Tüm modüllere tek noktadan erişin ve sayfalar arası geçişleri buradan başlatın.
+          </p>
+        </header>
 
         <nav class="sidebar-nav">
           <section
@@ -46,16 +33,6 @@
             <hr v-if="index !== navGroups.length - 1" class="group-divider" />
           </section>
         </nav>
-
-        <footer class="sidebar-footer">
-          <RouterLink :to="{ name: 'knowledge-base' }" class="support-card">
-            <div class="support-icon" aria-hidden="true">💬</div>
-            <div>
-              <p class="support-title">Destek Merkezi</p>
-              <p class="support-caption">Sık sorulan sorular ve yönergeler</p>
-            </div>
-          </RouterLink>
-        </footer>
       </div>
     </aside>
 
@@ -90,16 +67,6 @@ interface NavGroup {
   label?: string;
   items: NavItem[];
 }
-
-const currentUser = {
-  name: 'Admin Kullanıcısı',
-  role: 'Sistem Yönetimi',
-  status: 'Aktif'
-};
-
-const userStatusClass = computed(() =>
-  currentUser.status === 'Aktif' ? 'online' : 'offline'
-);
 
 const navGroups = computed<NavGroup[]>(() => [
   {
@@ -211,124 +178,27 @@ const navGroups = computed<NavGroup[]>(() => [
 .sidebar-inner {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1.75rem;
   padding: 2.5rem 1.75rem 2rem;
   height: 100%;
 }
 
-.sidebar-top {
+.sidebar-header {
   display: grid;
-  gap: 1.5rem;
+  gap: 0.45rem;
 }
 
-.brand-card {
-  display: flex;
-  align-items: center;
-  gap: 1.1rem;
-  padding: 1.25rem 1.1rem;
-  border-radius: 20px;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.18), rgba(37, 99, 235, 0.05));
-  box-shadow: 0 18px 34px rgba(37, 99, 235, 0.15);
+.sidebar-title {
+  margin: 0;
+  font-size: 1.35rem;
   color: #0f172a;
 }
 
-.brand-avatar {
-  width: 3.2rem;
-  height: 3.2rem;
-  border-radius: 20px;
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
-  color: #f8fafc;
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-  font-size: 1.15rem;
-  letter-spacing: 0.08em;
-}
-
-.brand-eyebrow {
-  margin: 0 0 0.35rem;
-  font-size: 0.75rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: #1d4ed8;
-}
-
-.brand-card h1 {
-  margin: 0 0 0.35rem;
-  font-size: 1.3rem;
-}
-
-.brand-caption {
+.sidebar-description {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   color: #475569;
-}
-
-.user-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.85rem 1rem;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.75);
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.1);
-  text-decoration: none;
-  color: inherit;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.user-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 18px 32px rgba(37, 99, 235, 0.18);
-}
-
-.user-avatar {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #38bdf8, #2563eb);
-  color: #f8fafc;
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-}
-
-.user-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  flex: 1;
-}
-
-.user-name {
-  font-weight: 600;
-  font-size: 0.95rem;
-}
-
-.user-role {
-  font-size: 0.8rem;
-  color: #475569;
-}
-
-.user-status {
-  font-size: 0.75rem;
-  padding: 0.25rem 0.6rem;
-  border-radius: 999px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.user-status.online {
-  background: rgba(34, 197, 94, 0.14);
-  color: #15803d;
-}
-
-.user-status.offline {
-  background: rgba(248, 113, 113, 0.16);
-  color: #b91c1c;
+  line-height: 1.5;
 }
 
 .sidebar-nav {
@@ -359,7 +229,7 @@ const navGroups = computed<NavGroup[]>(() => [
   border-radius: 16px;
   text-decoration: none;
   color: #0f172a;
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.65);
   border: 1px solid rgba(148, 163, 184, 0.2);
   box-shadow: 0 12px 22px rgba(15, 23, 42, 0.05);
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
@@ -414,43 +284,6 @@ const navGroups = computed<NavGroup[]>(() => [
   border-bottom: 1px solid rgba(148, 163, 184, 0.25);
 }
 
-.sidebar-footer {
-  margin-top: auto;
-}
-
-.support-card {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  padding: 1rem 1.1rem;
-  border-radius: 18px;
-  background: rgba(37, 99, 235, 0.1);
-  color: #1d4ed8;
-  text-decoration: none;
-  border: 1px solid rgba(59, 130, 246, 0.18);
-}
-
-.support-icon {
-  width: 2.4rem;
-  height: 2.4rem;
-  border-radius: 16px;
-  background: rgba(37, 99, 235, 0.15);
-  display: grid;
-  place-items: center;
-  font-size: 1.25rem;
-}
-
-.support-title {
-  margin: 0;
-  font-weight: 600;
-}
-
-.support-caption {
-  margin: 0.15rem 0 0;
-  font-size: 0.8rem;
-  color: rgba(29, 78, 216, 0.75);
-}
-
 .layout-main {
   display: flex;
   flex-direction: column;
@@ -497,7 +330,7 @@ const navGroups = computed<NavGroup[]>(() => [
     gap: 1.5rem;
   }
 
-  .sidebar-top {
+  .sidebar-header {
     min-width: 240px;
     flex: 0 0 auto;
   }
