@@ -58,7 +58,7 @@
                 <th scope="col">Modül</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody v-if="filteredUsers.length">
               <tr v-for="user in filteredUsers" :key="user.id">
                 <td>
                   <span class="user-name">{{ user.name }}</span>
@@ -73,58 +73,58 @@
                 </td>
               </tr>
             </tbody>
+            <tbody v-else>
+              <tr>
+                <td colspan="5" class="empty-row">Henüz kullanıcı kaydı bulunmuyor.</td>
+              </tr>
+            </tbody>
           </table>
         </div>
 
         <div v-else-if="activeTab === 'modules'" class="tab-panel modules-panel">
-          <ul class="module-grid" role="list">
-            <li v-for="module in moduleCards" :key="module.id" class="module-card" role="listitem">
-              <div class="module-icon" aria-hidden="true">{{ module.icon }}</div>
-              <div class="module-text">
-                <p class="module-label">{{ module.title }}</p>
-                <p class="module-meta">{{ module.module }} • {{ module.count }} kayıt</p>
-                <p class="module-note">{{ module.description }}</p>
-              </div>
-              <RouterLink :to="{ name: module.routeName }" class="module-link">
-                {{ module.linkLabel }}
-              </RouterLink>
-            </li>
-          </ul>
+          <template v-if="moduleCards.length">
+            <ul class="module-grid" role="list">
+              <li v-for="module in moduleCards" :key="module.id" class="module-card" role="listitem">
+                <div class="module-icon" aria-hidden="true">{{ module.icon }}</div>
+                <div class="module-text">
+                  <p class="module-label">{{ module.title }}</p>
+                  <p class="module-meta">{{ module.module }} • {{ module.count }} kayıt</p>
+                  <p class="module-note">{{ module.description }}</p>
+                </div>
+                <RouterLink :to="{ name: module.routeName }" class="module-link">
+                  {{ module.linkLabel }}
+                </RouterLink>
+              </li>
+            </ul>
+          </template>
+          <p v-else class="empty-state">Henüz modül bilgisi eklenmemiş.</p>
         </div>
 
         <div v-else class="tab-panel integrations-panel">
-          <ul class="integration-grid" role="list">
-            <li
-              v-for="integration in integrationCards"
-              :key="integration.id"
-              class="integration-card"
-              role="listitem"
-            >
-              <div class="integration-icon" aria-hidden="true">{{ integration.icon }}</div>
-              <div class="integration-text">
-                <p class="integration-label">{{ integration.title }}</p>
-                <p class="integration-status">{{ integration.status }}</p>
-                <p class="integration-note">{{ integration.note }}</p>
-              </div>
-              <RouterLink :to="{ name: integration.routeName }" class="integration-link">
-                {{ integration.linkLabel }}
-              </RouterLink>
-            </li>
-          </ul>
+          <template v-if="integrationCards.length">
+            <ul class="integration-grid" role="list">
+              <li
+                v-for="integration in integrationCards"
+                :key="integration.id"
+                class="integration-card"
+                role="listitem"
+              >
+                <div class="integration-icon" aria-hidden="true">{{ integration.icon }}</div>
+                <div class="integration-text">
+                  <p class="integration-label">{{ integration.title }}</p>
+                  <p class="integration-status">{{ integration.status }}</p>
+                  <p class="integration-note">{{ integration.note }}</p>
+                </div>
+                <RouterLink :to="{ name: integration.routeName }" class="integration-link">
+                  {{ integration.linkLabel }}
+                </RouterLink>
+              </li>
+            </ul>
+          </template>
+          <p v-else class="empty-state">Henüz entegrasyon bağlantısı eklenmemiş.</p>
         </div>
       </div>
     </div>
-
-    <section class="highlight-grid" aria-label="Öne çıkan göstergeler">
-      <article v-for="item in highlightCards" :key="item.id" class="highlight-card">
-        <p class="highlight-label">{{ item.label }}</p>
-        <p class="highlight-value">{{ item.value }}</p>
-        <p class="highlight-note">{{ item.note }}</p>
-        <RouterLink :to="{ name: item.routeName }" class="highlight-link">
-          {{ item.linkLabel }}
-        </RouterLink>
-      </article>
-    </section>
 
     <article class="workflow-card">
       <header>
@@ -213,15 +213,6 @@ interface IntegrationCard {
   linkLabel: string;
 }
 
-interface HighlightCard {
-  id: string;
-  label: string;
-  value: string;
-  note: string;
-  routeName: RouteName;
-  linkLabel: string;
-}
-
 const tabItems: TabItem[] = [
   {
     id: 'users',
@@ -246,134 +237,11 @@ const tabItems: TabItem[] = [
 const activeTab = ref<TabId>('users');
 const searchQuery = ref('');
 
-const userRows: UserRow[] = [
-  {
-    id: 'user-1',
-    name: 'Selin Aydın',
-    department: 'Bilgi Teknolojileri',
-    email: 'selin.aydin@example.com',
-    lastLogin: '12.10.2023',
-    module: 'Talep Takip',
-    routeName: 'request-tracking'
-  },
-  {
-    id: 'user-2',
-    name: 'Mert Karaca',
-    department: 'Sistem Yönetimi',
-    email: 'mert.karaca@example.com',
-    lastLogin: '12.10.2023',
-    module: 'Admin Paneli',
-    routeName: 'admin-panel'
-  },
-  {
-    id: 'user-3',
-    name: 'Elif Korkmaz',
-    department: 'Bilgi Teknolojileri',
-    email: 'elif.korkmaz@example.com',
-    lastLogin: '10.10.2023',
-    module: 'Envanter Takip',
-    routeName: 'inventory-tracking'
-  },
-  {
-    id: 'user-4',
-    name: 'Barış Demir',
-    department: 'Destek Operasyonları',
-    email: 'baris.demir@example.com',
-    lastLogin: '09.10.2023',
-    module: 'Kayıtlar',
-    routeName: 'records'
-  }
-];
+const userRows: UserRow[] = [];
 
-const moduleCards: ModuleCard[] = [
-  {
-    id: 'module-1',
-    title: 'BT Donanımları',
-    module: 'Envanter',
-    count: 128,
-    description: 'Dizüstü, masaüstü ve çevre birimlerinin merkezi kaydı.',
-    routeName: 'inventory-tracking',
-    icon: '💻',
-    linkLabel: 'Envanter modülünü aç'
-  },
-  {
-    id: 'module-2',
-    title: 'Yazılım Lisansları',
-    module: 'Lisans',
-    count: 86,
-    description: 'Adobe, Microsoft 365 ve özel uygulama lisans listeleri.',
-    routeName: 'license-tracking',
-    icon: '🪪',
-    linkLabel: 'Lisans kayıtlarını görüntüle'
-  },
-  {
-    id: 'module-3',
-    title: 'Sarf Malzemeleri',
-    module: 'Yazıcı',
-    count: 42,
-    description: 'Toner, drum ve bakım kitleri için standart stok kodları.',
-    routeName: 'printer-tracking',
-    icon: '🖨️',
-    linkLabel: 'Yazıcı takibini incele'
-  }
-];
+const moduleCards: ModuleCard[] = [];
 
-const integrationCards: IntegrationCard[] = [
-  {
-    id: 'integration-1',
-    title: 'Kurumsal LDAP',
-    status: 'Son senkronizasyon 5 dk önce',
-    note: 'Active Directory kullanıcı eşleştirmesi başarıyla tamamlandı.',
-    routeName: 'records',
-    icon: '🌐',
-    linkLabel: 'Logları incele'
-  },
-  {
-    id: 'integration-2',
-    title: 'Tek Oturum Açma (SSO)',
-    status: 'Durum: Aktif',
-    note: 'Portal girişleri için SSO sağlayıcı ayarları doğrulandı.',
-    routeName: 'profile',
-    icon: '🔐',
-    linkLabel: 'Erişim izinlerini aç'
-  },
-  {
-    id: 'integration-3',
-    title: 'Talep Formu API',
-    status: 'Durum: Test ortamı',
-    note: 'Dış sistemlerden talep açılışını sağlayan bağlantı güncelleniyor.',
-    routeName: 'request-tracking',
-    icon: '⚙️',
-    linkLabel: 'Talepleri görüntüle'
-  }
-];
-
-const highlightCards: HighlightCard[] = [
-  {
-    id: 'highlight-roles',
-    label: 'Aktif Rol',
-    value: '6',
-    note: 'Yetki matrisinde tanımlı rol sayısı.',
-    routeName: 'admin-panel',
-    linkLabel: 'Rol detaylarını aç'
-  },
-  {
-    id: 'highlight-modules',
-    label: 'Yönetilen Modül',
-    value: '7',
-    note: 'Kontrol paneli üzerinden takip edilen modül sayısı.',
-    routeName: 'home',
-    linkLabel: 'Genel bakışı görüntüle'
-  },
-  {
-    id: 'highlight-requests',
-    label: 'Bekleyen Onay',
-    value: '5',
-    note: 'Talep modülünde onay bekleyen işlem.',
-    routeName: 'request-tracking',
-    linkLabel: 'Taleplere git'
-  }
-];
+const integrationCards: IntegrationCard[] = [];
 
 const filteredUsers = computed(() => {
   const query = searchQuery.value.trim().toLowerCase();
@@ -622,6 +490,14 @@ const primaryActionRoute = computed<RouteLocationRaw>(() => {
   border-bottom: 1px solid rgba(148, 163, 184, 0.2);
 }
 
+.empty-row {
+  text-align: center;
+  padding: 2rem 0;
+  color: #64748b;
+  font-weight: 500;
+  background: rgba(241, 245, 249, 0.6);
+}
+
 .admin-table thead th {
   font-size: 0.85rem;
   letter-spacing: 0.08em;
@@ -702,46 +578,15 @@ const primaryActionRoute = computed<RouteLocationRaw>(() => {
   font-size: 0.9rem;
 }
 
-.highlight-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1.5rem;
-}
-
-.highlight-card {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(14, 165, 233, 0.12));
-  border: 1px solid rgba(59, 130, 246, 0.25);
-  border-radius: 22px;
-  padding: 1.6rem;
-  display: grid;
-  gap: 0.75rem;
-  box-shadow: 0 24px 40px rgba(59, 130, 246, 0.18);
-}
-
-.highlight-label {
+.empty-state {
   margin: 0;
-  font-size: 0.85rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(29, 78, 216, 0.85);
-}
-
-.highlight-value {
-  margin: 0;
-  font-size: 2.4rem;
-  font-weight: 700;
-}
-
-.highlight-note {
-  margin: 0;
-  color: #1f2937;
-  line-height: 1.5;
-}
-
-.highlight-link {
-  color: #1d4ed8;
-  font-weight: 600;
-  text-decoration: none;
+  padding: 2.25rem;
+  text-align: center;
+  border-radius: 20px;
+  border: 1px dashed rgba(148, 163, 184, 0.5);
+  color: #475569;
+  background: rgba(248, 250, 252, 0.9);
+  font-weight: 500;
 }
 
 .workflow-card {
