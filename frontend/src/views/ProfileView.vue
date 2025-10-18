@@ -76,40 +76,14 @@
         </ul>
       </article>
 
-      <article class="workspace-card" aria-labelledby="connections-title">
-        <header>
-          <h2 id="connections-title">Bağlı Modüller</h2>
-          <p>Kullanıcı bilgilerinizin aktarıldığı uygulama alanları ve takip akışları.</p>
-        </header>
-        <ul class="connection-list">
-          <li v-for="connection in connections" :key="connection.id">
-            <div>
-              <p class="connection-title">{{ connection.title }}</p>
-              <p class="connection-note">{{ connection.note }}</p>
-            </div>
-            <RouterLink :to="{ name: connection.routeName }" class="connection-link">
-              {{ connection.linkLabel }}
-            </RouterLink>
-          </li>
-        </ul>
-      </article>
     </div>
 
     <article class="workflow-card">
       <h2>Profil Senkronizasyonu</h2>
       <ol class="workflow-steps">
-        <li>
-          Profil bilgilerinizde yapılan güncellemeler <RouterLink :to="{ name: 'request-tracking' }">Talep</RouterLink>
-          ve <RouterLink :to="{ name: 'inventory-tracking' }">Envanter</RouterLink> modüllerinde anında görünür.
-        </li>
-        <li>
-          Yetki matrisindeki değişiklikler <RouterLink :to="{ name: 'admin-panel' }">Admin Paneli</RouterLink>
-          tarafından onaylandığında bildirim tercihleriniz kontrol edilir.
-        </li>
-        <li>
-          Tüm hareketler <RouterLink :to="{ name: 'records' }">Kayıtlar</RouterLink> modülünde denetlenerek
-          raporlanır ve ekiplerle paylaşılır.
-        </li>
+        <li>Profil bilgilerinizde yapılan güncellemeler tüm modüllerde eşzamanlı görünür.</li>
+        <li>Yetki matrisindeki değişiklikler onaylandığında bildirim tercihleri kontrol edilir.</li>
+        <li>Tüm hareketler düzenli olarak denetlenir ve ekiplerle paylaşılır.</li>
       </ol>
     </article>
   </section>
@@ -141,21 +115,6 @@ interface PreferenceItem {
   title: string;
   description: string;
   channel: string;
-}
-
-type ConnectedRoute =
-  | 'request-tracking'
-  | 'knowledge-base'
-  | 'scrap-management'
-  | 'admin-panel'
-  | 'inventory-tracking';
-
-interface ConnectionItem {
-  id: string;
-  title: string;
-  note: string;
-  routeName: ConnectedRoute;
-  linkLabel: string;
 }
 
 const heroMetrics: HeroMetric[] = [
@@ -208,44 +167,6 @@ const preferences: PreferenceItem[] = [
     title: 'Admin paneli değişiklikleri',
     description: 'LDAP bağlantısı veya rol güncellemesi olduğunda bilgi.',
     channel: 'Mobil'
-  }
-];
-
-const connections: ConnectionItem[] = [
-  {
-    id: '1',
-    title: 'Talep Yönetimi',
-    note: 'Taleplerde onaylayıcı ve takipçi olarak atanırsınız.',
-    routeName: 'request-tracking',
-    linkLabel: 'Talep akışına git'
-  },
-  {
-    id: '2',
-    title: 'Bilgi Bankası',
-    note: 'Dokümanlarda yazar ve editör olarak görünürsünüz.',
-    routeName: 'knowledge-base',
-    linkLabel: 'İçerikleri düzenle'
-  },
-  {
-    id: '3',
-    title: 'Hurdalar',
-    note: 'Hurda taleplerinde teknik raporlarınız paylaşılır.',
-    routeName: 'scrap-management',
-    linkLabel: 'Hurda sürecini aç'
-  },
-  {
-    id: '4',
-    title: 'Admin Paneli',
-    note: 'Rol ve yetki yönetimi için profil bilgileriniz kullanılır.',
-    routeName: 'admin-panel',
-    linkLabel: 'Yetkileri görüntüle'
-  },
-  {
-    id: '5',
-    title: 'Envanter Takip',
-    note: 'Zimmet hareketleri profille eşleştirilir.',
-    routeName: 'inventory-tracking',
-    linkLabel: 'Envanteri incele'
   }
 ];
 </script>

@@ -9,16 +9,21 @@
     </header>
 
     <section class="metrics" aria-label="Genel sayılar">
-      <article
-        v-for="metric in summaryMetrics"
-        :key="metric.id"
-        class="metric-card"
-        role="listitem"
-      >
-        <div class="metric-label">{{ metric.label }}</div>
-        <div class="metric-value">{{ metric.value }}</div>
-        <p class="metric-caption">{{ metric.caption }}</p>
-      </article>
+      <template v-if="isMetricsLoading">
+        <p class="section-empty">Metrikler yükleniyor...</p>
+      </template>
+      <template v-else>
+        <article
+          v-for="metric in summaryMetrics"
+          :key="metric.id"
+          class="metric-card"
+          role="listitem"
+        >
+          <div class="metric-label">{{ metric.label }}</div>
+          <div class="metric-value">{{ metric.value }}</div>
+          <p class="metric-caption">{{ metric.caption }}</p>
+        </article>
+      </template>
     </section>
 
     <section class="stocks" aria-labelledby="stock-status-title">
@@ -28,19 +33,25 @@
       </header>
 
       <div class="stock-grid" role="list">
-        <article v-for="item in highlightedStocks" :key="item.id" class="stock-card" role="listitem">
-          <div class="stock-header">
-            <span class="stock-name">{{ item.name }}</span>
-            <span class="stock-category">{{ item.category }}</span>
-          </div>
-          <div class="stock-body">
-            <span class="stock-quantity">{{ item.quantity }} adet</span>
-            <span class="stock-threshold" :class="{ warning: item.quantity <= item.threshold }">
-              Minimum: {{ item.threshold }}
-            </span>
-          </div>
-          <footer class="stock-footer">{{ item.note }}</footer>
-        </article>
+        <template v-if="isStockLoading">
+          <p class="section-empty">Stok kayıtları yükleniyor...</p>
+        </template>
+        <template v-else-if="highlightedStocks.length === 0">
+          <p class="section-empty">Henüz stok kaydı bulunmuyor.</p>
+        </template>
+        <template v-else>
+          <article v-for="item in highlightedStocks" :key="item.id" class="stock-card" role="listitem">
+            <div class="stock-header">
+              <span class="stock-name">{{ item.name }}</span>
+              <span class="stock-category">{{ item.category }}</span>
+            </div>
+            <div class="stock-body">
+              <span class="stock-quantity">{{ item.quantityText }}</span>
+              <span class="stock-updated">{{ item.updatedAt }}</span>
+            </div>
+            <footer class="stock-footer">{{ item.note }}</footer>
+          </article>
+        </template>
       </div>
     </section>
 
@@ -51,20 +62,41 @@
       </header>
 
       <ol class="recent-list">
-        <li v-for="item in limitedRecentOperations" :key="item.id" class="recent-item">
-          <div class="recent-meta">
-            <span class="recent-module">{{ item.module }}</span>
-            <span class="recent-date">{{ item.date }}</span>
-          </div>
-          <p class="recent-description">{{ item.description }}</p>
-        </li>
+        <template v-if="isRecentLoading">
+          <li class="recent-empty">İşlemler yükleniyor...</li>
+        </template>
+        <template v-else-if="limitedRecentOperations.length === 0">
+          <li class="recent-empty">Henüz işlem kaydı yok.</li>
+        </template>
+        <template v-else>
+          <li v-for="item in limitedRecentOperations" :key="item.id" class="recent-item">
+            <div class="recent-meta">
+              <span class="recent-module">{{ item.module }}</span>
+              <span class="recent-date">{{ item.date }}</span>
+            </div>
+            <p class="recent-description">{{ item.description }}</p>
+            <p v-if="item.note" class="recent-note">{{ item.note }}</p>
+          </li>
+        </template>
       </ol>
     </section>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import {
+  fetchInventoryRecords,
+  fetchLicenseRecords,
+  fetchRequestRecords,
+  fetchStockRecords,
+  fetchAuditLogs,
+  type InventoryEntity,
+  type LicenseEntity,
+  type RequestEntity,
+  type StockEntity,
+  type AuditLogEntity
+} from '@/services/modules';
 
 interface SummaryMetric {
   id: string;
@@ -77,8 +109,8 @@ interface HighlightedStock {
   id: string;
   name: string;
   category: string;
-  quantity: number;
-  threshold: number;
+  quantityText: string;
+  updatedAt: string;
   note: string;
 }
 
@@ -87,170 +119,219 @@ interface RecentOperation {
   module: string;
   date: string;
   description: string;
+  note?: string;
 }
 
-const summaryMetrics: SummaryMetric[] = [
-  {
-    id: 'total-devices',
-    label: 'Toplam Cihaz',
-    value: '482',
-    caption: 'Son 30 günde 12 yeni cihaz eklendi'
-  },
-  {
-    id: 'licenses',
-    label: 'Lisans',
-    value: '318',
-    caption: '85 lisansın süresi 90 gün içinde yenilenecek'
-  },
-  {
-    id: 'faulty-devices',
-    label: 'Arızalı Cihaz',
-    value: '7',
-    caption: '3 cihaz teknik serviste, 4 cihaz parça bekliyor'
-  },
-  {
-    id: 'open-requests',
-    label: 'Açık Talep',
-    value: '19',
-    caption: '5 talep onay bekliyor, 14 talep hazırlık aşamasında'
-  }
-];
+const inventoryRecords = ref<InventoryEntity[]>([]);
+const licenseRecords = ref<LicenseEntity[]>([]);
+const requestRecords = ref<RequestEntity[]>([]);
+const stockRecords = ref<StockEntity[]>([]);
+const auditLogs = ref<AuditLogEntity[]>([]);
 
-const highlightedStocks: HighlightedStock[] = [
-  {
-    id: 'laptop',
-    name: 'Dizüstü Bilgisayar',
-    category: 'Envanter',
-    quantity: 24,
-    threshold: 10,
-    note: 'Son talep teslim edildi, 6 adet rezerve durumda.'
-  },
-  {
-    id: 'license',
-    name: 'Microsoft 365 E3',
-    category: 'Lisans',
-    quantity: 42,
-    threshold: 30,
-    note: 'Yeni kullanıcılar için 10 adet serbest lisans mevcut.'
-  },
-  {
-    id: 'printer-toner',
-    name: 'Toner - HP 83A',
-    category: 'Yazıcı',
-    quantity: 8,
-    threshold: 8,
-    note: 'Kritik seviyeye yaklaşıldı, tedarik talebi önerilir.'
-  },
-  {
-    id: 'network-switch',
-    name: '24 Port Switch',
-    category: 'Stok',
-    quantity: 15,
-    threshold: 6,
-    note: 'Depo sayımı güncel, 3 adet proje için ayrıldı.'
-  }
-];
+const isMetricsLoading = ref(true);
+const isStockLoading = ref(true);
+const isRecentLoading = ref(true);
 
-const recentOperations: RecentOperation[] = [
-  {
-    id: 'op-001',
-    module: 'Envanter',
-    date: '12.05.2024 09:45',
-    description: 'IT-00482 seri numaralı laptop Mehmet Yılmaz üzerine zimmetlendi.'
-  },
-  {
-    id: 'op-002',
-    module: 'Stok',
-    date: '12.05.2024 08:50',
-    description: 'HP 83A toner stoğundan 2 adet Yazıcı Takip modülüne aktarıldı.'
-  },
-  {
-    id: 'op-003',
-    module: 'Talep',
-    date: '11.05.2024 17:12',
-    description: '#451 nolu talep satın alma onayında bekliyor.'
-  },
-  {
-    id: 'op-004',
-    module: 'Bilgi Bankası',
-    date: '11.05.2024 15:32',
-    description: 'VPN kurulumu rehberi güncellendi.'
-  },
-  {
-    id: 'op-005',
-    module: 'Lisans',
-    date: '11.05.2024 14:05',
-    description: 'Adobe CC lisansı 3 kullanıcı için yenilendi.'
-  },
-  {
-    id: 'op-006',
-    module: 'Envanter',
-    date: '11.05.2024 11:44',
-    description: 'IT-00321 masaüstü bilgisayar hurdaya ayrıldı.'
-  },
-  {
-    id: 'op-007',
-    module: 'Kayıtlar',
-    date: '11.05.2024 10:18',
-    description: 'Yetki grubu "Destek" için stok görüntüleme izni verildi.'
-  },
-  {
-    id: 'op-008',
-    module: 'Yazıcı',
-    date: '10.05.2024 19:22',
-    description: 'YTR-102 etiket yazıcısı bakım planına alındı.'
-  },
-  {
-    id: 'op-009',
-    module: 'Talep',
-    date: '10.05.2024 18:05',
-    description: '#448 nolu talep teslim edildi ve envantere işlendi.'
-  },
-  {
-    id: 'op-010',
-    module: 'Stok',
-    date: '10.05.2024 16:47',
-    description: '24 port switch stoğuna 5 adet yeni ürün eklendi.'
-  },
-  {
-    id: 'op-011',
-    module: 'Profil',
-    date: '10.05.2024 15:10',
-    description: 'Ayşe Demir yetki grubu "Satın Alma" olarak güncellendi.'
-  },
-  {
-    id: 'op-012',
-    module: 'Lisans',
-    date: '10.05.2024 12:53',
-    description: 'Autodesk paket lisansları 2025 sonuna kadar uzatıldı.'
-  },
-  {
-    id: 'op-013',
-    module: 'Bilgi Bankası',
-    date: '09.05.2024 20:15',
-    description: 'Yeni çalışan başlangıç kontrol listesi yayınlandı.'
-  },
-  {
-    id: 'op-014',
-    module: 'Hurdalar',
-    date: '09.05.2024 18:05',
-    description: 'Hurda yazıcı envanterden düşülerek geri dönüşüme gönderildi.'
-  },
-  {
-    id: 'op-015',
-    module: 'Admin Paneli',
-    date: '09.05.2024 16:40',
-    description: 'LDAP bağlantısı test edildi ve başarıyla doğrulandı.'
-  },
-  {
-    id: 'op-016',
-    module: 'Kayıtlar',
-    date: '09.05.2024 14:28',
-    description: 'Sistem logları arşivlendi.'
-  }
-];
+const categoryLabels: Record<string, string> = {
+  envanter: 'Envanter',
+  yazici: 'Yazıcı',
+  lisans: 'Lisans',
+  sistem: 'Sistem Odası'
+};
 
-const limitedRecentOperations = computed(() => recentOperations.slice(0, 15));
+const moduleLabels: Record<string, string> = {
+  'inventory-tracking': 'Envanter',
+  'license-tracking': 'Lisans',
+  'printer-tracking': 'Yazıcı',
+  'stock-tracking': 'Stok',
+  'request-tracking': 'Talep',
+  'scrap-management': 'Hurdalar',
+  'knowledge-base': 'Bilgi Bankası',
+  'admin-panel': 'Admin Paneli',
+  records: 'Kayıtlar'
+};
+
+const parseQuantity = (value: string) => {
+  const match = value.match(/\d+/);
+  return match ? Number.parseInt(match[0], 10) : 0;
+};
+
+const toTimestamp = (value: string) => {
+  const parsed = Date.parse(value);
+
+  if (!Number.isNaN(parsed)) {
+    return parsed;
+  }
+
+  const dotted = value.split('.');
+  if (dotted.length === 3) {
+    const [day, month, year] = dotted;
+    const isoCandidate = `${year}-${month}-${day}`;
+    const isoParsed = Date.parse(isoCandidate);
+
+    if (!Number.isNaN(isoParsed)) {
+      return isoParsed;
+    }
+  }
+
+  return 0;
+};
+
+const loadMetrics = async () => {
+  try {
+    const [inventory, licenses, requests] = await Promise.all([
+      fetchInventoryRecords(),
+      fetchLicenseRecords(),
+      fetchRequestRecords()
+    ]);
+
+    inventoryRecords.value = inventory;
+    licenseRecords.value = licenses;
+    requestRecords.value = requests;
+  } catch (error) {
+    console.error('Gösterge panosu metrikleri yüklenirken hata oluştu.', error);
+  } finally {
+    isMetricsLoading.value = false;
+  }
+};
+
+const loadStock = async () => {
+  try {
+    stockRecords.value = await fetchStockRecords();
+  } catch (error) {
+    console.error('Stok özetleri yüklenirken hata oluştu.', error);
+  } finally {
+    isStockLoading.value = false;
+  }
+};
+
+const loadRecentOperations = async () => {
+  try {
+    auditLogs.value = await fetchAuditLogs();
+  } catch (error) {
+    console.error('Son işlemler yüklenirken hata oluştu.', error);
+  } finally {
+    isRecentLoading.value = false;
+  }
+};
+
+onMounted(() => {
+  void loadMetrics();
+  void loadStock();
+  void loadRecentOperations();
+});
+
+const summaryMetrics = computed<SummaryMetric[]>(() => {
+  const assigned = inventoryRecords.value.filter((record) => record.state === 'assigned').length;
+  const available = inventoryRecords.value.filter((record) => record.state === 'available').length;
+  const transfer = inventoryRecords.value.filter((record) => record.state === 'transfer').length;
+  const faulty = inventoryRecords.value.filter((record) => record.state === 'faulty').length;
+
+  const expiringLicenses = licenseRecords.value.filter((record) => record.status === 'expiring').length;
+  const awaitingLicenses = licenseRecords.value.filter((record) => record.status === 'awaiting').length;
+
+  const openRequests = requestRecords.value.filter((record) => record.status === 'open').length;
+  const completedRequests = requestRecords.value.filter((record) => record.status === 'completed').length;
+  const cancelledRequests = requestRecords.value.filter((record) => record.status === 'cancelled').length;
+
+  return [
+    {
+      id: 'total-devices',
+      label: 'Toplam Cihaz',
+      value: String(inventoryRecords.value.length),
+      caption: `Zimmetli: ${assigned} • Depoda: ${available}`
+    },
+    {
+      id: 'licenses',
+      label: 'Lisans',
+      value: String(licenseRecords.value.length),
+      caption: `Yenileme uyarısı: ${expiringLicenses} • Atama bekleyen: ${awaitingLicenses}`
+    },
+    {
+      id: 'faulty-devices',
+      label: 'Arızalı Cihaz',
+      value: String(faulty),
+      caption: `Transfer sürecinde: ${transfer}`
+    },
+    {
+      id: 'open-requests',
+      label: 'Açık Talep',
+      value: String(openRequests),
+      caption: `Tamamlanan: ${completedRequests} • İptal: ${cancelledRequests}`
+    }
+  ];
+});
+
+const highlightedStocks = computed<HighlightedStock[]>(() => {
+  if (stockRecords.value.length === 0) {
+    return [];
+  }
+
+  const grouped = new Map<
+    string,
+    {
+      name: string;
+      totalQuantity: number;
+      category: string;
+      latestDate: string;
+      latestTimestamp: number;
+      note: string;
+    }
+  >();
+
+  stockRecords.value.forEach((record) => {
+    const key = record.itemType.toLowerCase();
+    const quantity = parseQuantity(record.quantity);
+    const timestamp = toTimestamp(record.eventDate);
+
+    const existing = grouped.get(key);
+
+    if (!existing) {
+      grouped.set(key, {
+        name: record.itemType,
+        totalQuantity: quantity,
+        category: record.category ?? 'envanter',
+        latestDate: record.eventDate,
+        latestTimestamp: timestamp,
+        note: record.description
+      });
+      return;
+    }
+
+    existing.totalQuantity += quantity;
+
+    if (timestamp >= existing.latestTimestamp) {
+      existing.latestTimestamp = timestamp;
+      existing.latestDate = record.eventDate;
+      existing.note = record.description;
+      existing.category = record.category ?? existing.category;
+    }
+  });
+
+  return Array.from(grouped.values())
+    .sort((a, b) => b.totalQuantity - a.totalQuantity)
+    .slice(0, 4)
+    .map((group, index) => ({
+      id: `stock-${index}-${group.name.replace(/\s+/g, '-').toLowerCase()}`,
+      name: group.name,
+      category: categoryLabels[group.category] ?? 'Diğer',
+      quantityText: `${new Intl.NumberFormat('tr-TR').format(group.totalQuantity)} adet`,
+      updatedAt: group.latestDate,
+      note: group.note
+    }));
+});
+
+const recentOperations = computed<RecentOperation[]>(() =>
+  auditLogs.value.map((log) => ({
+    id: String(log.id),
+    module: moduleLabels[log.routeName] ?? 'Kayıtlar',
+    date: log.eventTime,
+    description: log.title,
+    note: log.detail
+  }))
+);
+
+const limitedRecentOperations = computed(() => recentOperations.value.slice(0, 15));
 </script>
 
 <style scoped>
@@ -273,10 +354,23 @@ const limitedRecentOperations = computed(() => recentOperations.slice(0, 15));
   line-height: 1.6;
 }
 
+
 .metrics {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1.5rem;
+}
+
+.section-empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 1.5rem;
+  border-radius: 18px;
+  border: 1px dashed rgba(148, 163, 184, 0.45);
+  background: rgba(241, 245, 249, 0.6);
+  text-align: center;
+  color: #475569;
+  font-weight: 500;
 }
 
 .metric-card {
@@ -371,13 +465,9 @@ const limitedRecentOperations = computed(() => recentOperations.slice(0, 15));
   font-weight: 700;
 }
 
-.stock-threshold {
+.stock-updated {
   font-size: 0.9rem;
-  color: #22c55e;
-}
-
-.stock-threshold.warning {
-  color: #dc2626;
+  color: #64748b;
 }
 
 .stock-footer {
@@ -391,6 +481,7 @@ const limitedRecentOperations = computed(() => recentOperations.slice(0, 15));
   display: grid;
   gap: 1.5rem;
 }
+
 
 .recent-list {
   list-style: none;
@@ -425,6 +516,23 @@ const limitedRecentOperations = computed(() => recentOperations.slice(0, 15));
   margin: 0;
   color: #1f2937;
   line-height: 1.55;
+}
+
+.recent-note {
+  margin: 0;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.recent-empty {
+  margin: 0;
+  padding: 1.5rem;
+  border-radius: 16px;
+  border: 1px dashed rgba(148, 163, 184, 0.45);
+  background: rgba(241, 245, 249, 0.6);
+  color: #475569;
+  text-align: center;
+  font-weight: 500;
 }
 
 @media (max-width: 1024px) {

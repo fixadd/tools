@@ -8,11 +8,6 @@
           Envanterdeki cihazların sorumlularını, durumlarını ve bağlı oldukları modülleri tek ekrandan
           görüntüleyin. Talep, stok ve kayıt akışlarıyla entegre şekilde yönetin.
         </p>
-        <div class="hero-links">
-          <RouterLink :to="{ name: 'request-tracking' }">Talep Takip</RouterLink>
-          <RouterLink :to="{ name: 'stock-tracking' }">Stok İşlemleri</RouterLink>
-          <RouterLink :to="{ name: 'records' }">Kayıt Arşivi</RouterLink>
-        </div>
       </div>
       <dl class="hero-metrics" aria-label="Envanter özetleri">
         <div v-for="metric in metrics" :key="metric.id">
@@ -102,52 +97,50 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="record in filteredRecords" :key="record.id">
-              <td data-title="Envanter No">
-                <span class="cell-title">{{ record.inventoryNo }}</span>
-                <span class="cell-meta">{{ record.statusLabel }}</span>
-              </td>
-              <td data-title="Fabrika">{{ record.factory }}</td>
-              <td data-title="Departman">{{ record.department }}</td>
-              <td data-title="Sorumlu">
-                <span class="cell-title">{{ record.responsible }}</span>
-                <span class="cell-meta">{{ record.responsibleRole }}</span>
-              </td>
-              <td data-title="Marka / Model">
-                <span class="cell-title">{{ record.brand }}</span>
-                <span class="cell-meta">{{ record.model }}</span>
-              </td>
-              <td data-title="İşlemler" class="actions-cell">
-                <label class="sr-only" :for="`inventory-action-${record.id}`">{{ record.inventoryNo }} işlemleri</label>
-                <select
-                  :id="`inventory-action-${record.id}`"
-                  :value="selectedActions[record.id] ?? ''"
-                  @change="(event) => handleActionChange(record, (event.target as HTMLSelectElement).value)"
-                >
-                  <option value="" disabled>Seçiniz...</option>
-                  <option value="detail">Detaya git</option>
-                  <option value="handover">Zimmet güncelle</option>
-                  <option value="faulty">Arıza bildir</option>
-                  <option value="history">Kayıtlara aç</option>
-                </select>
-              </td>
+            <tr v-if="isInventoryLoading">
+              <td colspan="6" class="empty-state">Envanter verileri yükleniyor...</td>
             </tr>
-            <tr v-if="filteredRecords.length === 0">
-              <td colspan="6" class="empty-state">Seçili filtrelerde kayıt bulunamadı.</td>
+            <tr v-else-if="inventoryRecords.length === 0">
+              <td colspan="6" class="empty-state">Henüz envanter kaydı eklenmedi.</td>
             </tr>
+            <template v-else>
+              <tr v-for="record in filteredRecords" :key="record.id">
+                <td data-title="Envanter No">
+                  <span class="cell-title">{{ record.inventoryNo }}</span>
+                  <span class="cell-meta">{{ record.statusLabel }}</span>
+                </td>
+                <td data-title="Fabrika">{{ record.factory }}</td>
+                <td data-title="Departman">{{ record.department }}</td>
+                <td data-title="Sorumlu">
+                  <span class="cell-title">{{ record.responsible }}</span>
+                  <span class="cell-meta">{{ record.responsibleRole }}</span>
+                </td>
+                <td data-title="Marka / Model">
+                  <span class="cell-title">{{ record.brand }}</span>
+                  <span class="cell-meta">{{ record.model }}</span>
+                </td>
+                <td data-title="İşlemler" class="actions-cell">
+                  <label class="sr-only" :for="`inventory-action-${record.id}`">{{ record.inventoryNo }} işlemleri</label>
+                  <select
+                    :id="`inventory-action-${record.id}`"
+                    :value="selectedActions[record.id] ?? ''"
+                    @change="(event) => handleActionChange(record, (event.target as HTMLSelectElement).value)"
+                  >
+                    <option value="" disabled>Seçiniz...</option>
+                    <option value="detail">Detaya git</option>
+                    <option value="handover">Zimmet güncelle</option>
+                    <option value="faulty">Arıza bildir</option>
+                    <option value="history">Kayıtlara aç</option>
+                  </select>
+                </td>
+              </tr>
+              <tr v-if="filteredRecords.length === 0">
+                <td colspan="6" class="empty-state">Seçili filtrelerde kayıt bulunamadı.</td>
+              </tr>
+            </template>
           </tbody>
         </table>
       </div>
-    </article>
-
-    <article class="inventory-links" aria-label="Modüller arası bağlantılar">
-      <h2>Modüllerle bağlantıda kalın</h2>
-      <p>Envanter kartlarını talep, lisans ve yazıcı modülleriyle ilişkilendirerek süreçleri izleyin.</p>
-      <ul class="link-grid">
-        <li v-for="link in crossModuleLinks" :key="link.title">
-          <RouterLink :to="link.to">{{ link.title }} <span aria-hidden="true">→</span></RouterLink>
-        </li>
-      </ul>
     </article>
 
     <transition name="backdrop">
@@ -264,7 +257,10 @@
               </div>
 
               <div class="modal-actions">
-                <button type="submit" class="action primary">Kaydet</button>
+                <button type="submit" class="action primary" :disabled="isSubmittingInventory">
+                  <span v-if="!isSubmittingInventory">Kaydet</span>
+                  <span v-else>Kaydediliyor...</span>
+                </button>
                 <button type="button" class="action outline" @click="closeAddInventoryModal">İptal</button>
               </div>
             </form>
@@ -276,21 +272,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
-import { RouterLink, useRouter, type RouteLocationRaw } from 'vue-router';
-
-type RouteName =
-  | 'home'
-  | 'inventory-tracking'
-  | 'license-tracking'
-  | 'printer-tracking'
-  | 'stock-tracking'
-  | 'request-tracking'
-  | 'knowledge-base'
-  | 'scrap-management'
-  | 'profile'
-  | 'admin-panel'
-  | 'records';
+import { computed, onMounted, reactive, ref } from 'vue';
+import { useRouter, type RouteLocationRaw } from 'vue-router';
+import {
+  fetchInventoryRecords,
+  insertInventoryRecord,
+  type InventoryEntity
+} from '@/services/modules';
 
 type InventoryState = 'assigned' | 'available' | 'transfer' | 'faulty';
 type SegmentValue = 'all' | InventoryState;
@@ -330,11 +318,6 @@ interface AppliedFilters {
   department: string;
 }
 
-interface CrossModuleLink {
-  title: string;
-  to: RouteLocationRaw;
-}
-
 const router = useRouter();
 
 const statusLabels: Record<InventoryState, string> = {
@@ -344,56 +327,45 @@ const statusLabels: Record<InventoryState, string> = {
   faulty: 'Arızalı'
 };
 
-const inventoryRecords = ref<InventoryRecord[]>([
-  {
-    id: 'INV-1041',
-    inventoryNo: 'IFS-ENV-1041',
-    factory: 'Gebze',
-    department: 'Üretim',
-    responsible: 'Ahmet Demir',
-    responsibleRole: 'Hat Süpervizörü',
-    brand: 'Dell',
-    model: 'Latitude 7440',
-    state: 'assigned',
-    detailRoute: { name: 'request-tracking' }
-  },
-  {
-    id: 'INV-1045',
-    inventoryNo: 'IFS-ENV-1045',
-    factory: 'Ankara',
-    department: 'Finans',
-    responsible: 'Elif Kaya',
-    responsibleRole: 'Finans Uzmanı',
-    brand: 'HP',
-    model: 'ProBook 450 G10',
-    state: 'transfer',
-    detailRoute: { name: 'stock-tracking' }
-  },
-  {
-    id: 'INV-1038',
-    inventoryNo: 'IFS-ENV-1038',
-    factory: 'İzmir',
-    department: 'Bakım',
-    responsible: 'Mert Yıldız',
-    responsibleRole: 'Tekniker',
-    brand: 'Lenovo',
-    model: 'ThinkPad L15',
-    state: 'faulty',
-    detailRoute: { name: 'scrap-management' }
-  },
-  {
-    id: 'INV-1022',
-    inventoryNo: 'IFS-ENV-1022',
-    factory: 'Gebze',
-    department: 'Ar-Ge',
-    responsible: 'Selin Uçar',
-    responsibleRole: 'Yazılım Mühendisi',
-    brand: 'Apple',
-    model: 'MacBook Pro 14"',
-    state: 'available',
-    detailRoute: { name: 'license-tracking' }
+const inventoryRecords = ref<InventoryRecord[]>([]);
+const isInventoryLoading = ref(true);
+const isSubmittingInventory = ref(false);
+
+const resolveInventoryRoute = (routeName: string): RouteLocationRaw => {
+  if (!routeName) {
+    return { name: 'inventory-tracking' };
   }
-]);
+
+  return { name: routeName as string };
+};
+
+const mapInventoryEntity = (entity: InventoryEntity): InventoryRecord => ({
+  id: entity.id,
+  inventoryNo: entity.inventoryNo,
+  factory: entity.factory,
+  department: entity.department,
+  responsible: entity.responsible,
+  responsibleRole: entity.responsibleRole,
+  brand: entity.brand,
+  model: entity.model,
+  state: entity.state,
+  detailRoute: resolveInventoryRoute(entity.detailRoute)
+});
+
+const loadInventoryRecords = async () => {
+  try {
+    const records = await fetchInventoryRecords();
+    inventoryRecords.value = records.map(mapInventoryEntity);
+  } catch (error) {
+    console.error('Envanter kayıtları yüklenirken hata oluştu.', error);
+  } finally {
+    isInventoryLoading.value = false;
+  }
+};
+
+onMounted(() => {
+  void loadInventoryRecords();
+});
 
 const searchQuery = ref('');
 const selectedSegment = ref<SegmentValue>('all');
@@ -401,17 +373,23 @@ const filtersOpen = ref(false);
 const appliedFilters = reactive<AppliedFilters>({ factory: 'Tümü', department: 'Tümü' });
 const selectedActions = reactive<Record<string, string>>({});
 
-const factories = ['Tümü', 'Gebze', 'İzmir', 'Ankara'];
-const departments = ['Tümü', 'Üretim', 'Ar-Ge', 'Finans', 'Bakım'];
-const factoryChoices = factories.filter((factory) => factory !== 'Tümü');
-const departmentChoices = departments.filter((department) => department !== 'Tümü');
+const defaultFactories = ['Gebze', 'İzmir', 'Ankara'];
+const defaultDepartments = ['Üretim', 'Ar-Ge', 'Finans', 'Bakım'];
 
-const crossModuleLinks: CrossModuleLink[] = [
-  { title: 'Talep kuyruğuna bağlan', to: { name: 'request-tracking' } },
-  { title: 'Stok girişlerini kontrol et', to: { name: 'stock-tracking' } },
-  { title: 'Lisans eşlemesini incele', to: { name: 'license-tracking' } },
-  { title: 'Kayıt arşivine git', to: { name: 'records' } }
-];
+const factories = computed(() => {
+  const unique = new Set(defaultFactories);
+  inventoryRecords.value.forEach((record) => unique.add(record.factory));
+  return ['Tümü', ...unique];
+});
+
+const departments = computed(() => {
+  const unique = new Set(defaultDepartments);
+  inventoryRecords.value.forEach((record) => unique.add(record.department));
+  return ['Tümü', ...unique];
+});
+
+const factoryChoices = computed(() => factories.value.filter((factory) => factory !== 'Tümü'));
+const departmentChoices = computed(() => departments.value.filter((department) => department !== 'Tümü'));
 
 const metrics = computed<MetricItem[]>(() => {
   const totals = inventoryRecords.value.reduce(
@@ -558,12 +536,37 @@ const closeAddInventoryModal = () => {
   resetNewInventoryForm();
 };
 
-const submitNewInventory = () => {
+const createInventoryId = () => {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return `INV-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+  }
+
+  return `INV-${Date.now()}`;
+};
+
+const generateInventoryNumber = () => {
+  if (newInventoryForm.inventoryNo.trim()) {
+    return newInventoryForm.inventoryNo.trim();
+  }
+
+  const randomSuffix = Math.floor(Math.random() * 9000) + 1000;
+  return `IFS-ENV-${randomSuffix}`;
+};
+
+const submitNewInventory = async () => {
+  if (isSubmittingInventory.value) {
+    return;
+  }
+
+  isSubmittingInventory.value = true;
   const responsible = personnelOptions.find((person) => person.id === newInventoryForm.responsible);
 
+  const inventoryNo = generateInventoryNumber();
+  const id = createInventoryId();
+
   const newRecord: InventoryRecord = {
-    id: `INV-${Date.now()}`,
-    inventoryNo: newInventoryForm.inventoryNo || `IFS-ENV-${inventoryRecords.value.length + 1000}`,
+    id,
+    inventoryNo,
     factory: newInventoryForm.factory || 'Gebze',
     department: newInventoryForm.department || 'Üretim',
     responsible: responsible?.name || 'Belirsiz Kullanıcı',
@@ -571,12 +574,31 @@ const submitNewInventory = () => {
     brand: newInventoryForm.brand || 'Dell',
     model: newInventoryForm.model || 'Latitude 7440',
     state: 'available',
-    detailRoute: { name: 'stock-tracking', query: { ref: newInventoryForm.inventoryNo || 'IFS-ENV' } }
+    detailRoute: { name: 'stock-tracking', query: { ref: inventoryNo } }
   };
+  try {
+    await insertInventoryRecord({
+      id,
+      inventoryNo,
+      factory: newRecord.factory,
+      department: newRecord.department,
+      responsible: newRecord.responsible,
+      responsibleRole: newRecord.responsibleRole,
+      brand: newRecord.brand,
+      model: newRecord.model,
+      state: newRecord.state,
+      detailRoute: 'stock-tracking'
+    });
 
-  inventoryRecords.value = [newRecord, ...inventoryRecords.value];
-  closeAddInventoryModal();
-  router.push({ name: 'stock-tracking', query: { source: 'inventory' } });
+    inventoryRecords.value = [newRecord, ...inventoryRecords.value];
+    closeAddInventoryModal();
+    router.push({ name: 'stock-tracking', query: { source: 'inventory' } });
+  } catch (error) {
+    console.error('Envanter kaydı oluşturulamadı.', error);
+    window.alert('Envanter kaydı kaydedilirken bir sorun oluştu.');
+  } finally {
+    isSubmittingInventory.value = false;
+  }
 };
 
 const showFaultyRecords = () => {
@@ -657,28 +679,6 @@ const handleActionChange = (record: InventoryRecord, action: string) => {
   margin: 0;
   line-height: 1.65;
   color: rgba(15, 23, 42, 0.78);
-}
-
-.hero-links {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.hero-links a {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.55rem 1.25rem;
-  border-radius: 999px;
-  background: rgba(37, 99, 235, 0.16);
-  color: #1d4ed8;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.hero-links a:hover {
-  background: rgba(37, 99, 235, 0.24);
 }
 
 .hero-metrics {
@@ -945,50 +945,6 @@ const handleActionChange = (record: InventoryRecord, action: string) => {
   padding: 2.5rem 1rem;
   color: #475569;
   font-weight: 500;
-}
-
-.inventory-links {
-  background: rgba(241, 245, 249, 0.9);
-  border-radius: 28px;
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  padding: 2rem;
-  display: grid;
-  gap: 1.1rem;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 16px 38px rgba(15, 23, 42, 0.1);
-}
-
-.inventory-links h2 {
-  margin: 0;
-}
-
-.inventory-links p {
-  margin: 0;
-  color: #475569;
-}
-
-.link-grid {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.85rem;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-}
-
-.link-grid a {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.65rem 1rem;
-  border-radius: 16px;
-  text-decoration: none;
-  background: rgba(37, 99, 235, 0.14);
-  color: #1d4ed8;
-  font-weight: 600;
-}
-
-.link-grid a:hover {
-  background: rgba(37, 99, 235, 0.22);
 }
 
 .modal-backdrop {

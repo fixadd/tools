@@ -56,37 +56,46 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="request in filteredRequests" :key="request.id">
-              <td data-title="IFS No">{{ request.ifsNo }}</td>
-              <td data-title="Donanım Tipi">{{ request.hardwareType }}</td>
-              <td data-title="Marka">{{ request.brand }}</td>
-              <td data-title="Model">{{ request.model }}</td>
-              <td data-title="Miktar">{{ request.quantity }}</td>
-              <td data-title="Tarih">{{ request.date }}</td>
-              <td data-title="Açıklama">{{ request.note }}</td>
-              <td data-title="İşlemler" class="table-actions">
-                <div class="action-group">
-                  <button
-                    type="button"
-                    class="action-button stock"
-                    :title="request.targetLabel"
-                    @click="handleStockEntry(request)"
-                  >
-                    Stok Gir
-                  </button>
-                  <button
-                    type="button"
-                    class="action-button cancel"
-                    @click="cancelRequest(request)"
-                  >
-                    İptal Et
-                  </button>
-                </div>
-              </td>
+            <tr v-if="isRequestsLoading">
+              <td colspan="8" class="empty-state">Talepler yükleniyor...</td>
             </tr>
-            <tr v-if="filteredRequests.length === 0">
-              <td colspan="8" class="empty-state">{{ activeTab.emptyMessage }}</td>
-            </tr>
+            <template v-else>
+              <tr v-for="request in filteredRequests" :key="request.id">
+                <td data-title="IFS No">{{ request.ifsNo }}</td>
+                <td data-title="Donanım Tipi">{{ request.hardwareType }}</td>
+                <td data-title="Marka">{{ request.brand }}</td>
+                <td data-title="Model">{{ request.model }}</td>
+                <td data-title="Miktar">{{ request.quantity }}</td>
+                <td data-title="Tarih">{{ request.date }}</td>
+                <td data-title="Açıklama">{{ request.note }}</td>
+                <td data-title="İşlemler" class="table-actions">
+                  <div class="action-group">
+                    <button
+                      type="button"
+                      class="action-button stock"
+                      :title="request.targetLabel"
+                      :disabled="updatingRequestId === request.id"
+                      @click="handleStockEntry(request)"
+                    >
+                      <span v-if="updatingRequestId === request.id">Bekleyin...</span>
+                      <span v-else>Stok Gir</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="action-button cancel"
+                      :disabled="updatingRequestId === request.id"
+                      @click="cancelRequest(request)"
+                    >
+                      <span v-if="updatingRequestId === request.id">Güncelleniyor...</span>
+                      <span v-else>İptal Et</span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr v-if="filteredRequests.length === 0">
+                <td colspan="8" class="empty-state">{{ activeTab.emptyMessage }}</td>
+              </tr>
+            </template>
           </tbody>
         </table>
       </div>
@@ -179,7 +188,10 @@
 
           <footer class="modal-footer">
             <button type="button" class="ghost-button" @click="closeRequestForm">Vazgeç</button>
-            <button type="submit" class="primary-button">Gönder</button>
+            <button type="submit" class="primary-button" :disabled="isSubmittingRequest">
+              <span v-if="!isSubmittingRequest">Gönder</span>
+              <span v-else>Kaydediliyor...</span>
+            </button>
           </footer>
         </form>
       </div>
@@ -188,8 +200,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import {
+  fetchRequestRecords,
+  insertRequestRecord,
+  updateRequestRecord,
+  type RequestEntity
+} from '@/services/modules';
 
 type RequestStatus = 'open' | 'completed' | 'cancelled';
 
@@ -240,87 +258,40 @@ interface RequestFormItem {
 
 const router = useRouter();
 
-const requests = ref<RequestRecord[]>([
-  {
-    id: 'RQ-1045',
-    ifsNo: 'IFS-2024-045',
-    status: 'open',
-    hardwareType: 'Dizüstü Bilgisayar',
-    brand: 'Dell',
-    model: 'Latitude 5440',
-    quantity: '1 Adet',
-    date: '11.03.2024',
-    note: 'Yeni çalışan için cihaz bekleniyor.',
-    targetRoute: 'stock-tracking',
-    targetLabel: 'Stok kartına git'
-  },
-  {
-    id: 'RQ-1046',
-    ifsNo: 'IFS-2024-046',
-    status: 'open',
-    hardwareType: 'Yazılım Lisansı',
-    brand: 'Adobe',
-    model: 'Creative Cloud',
-    quantity: '5 Kullanıcı',
-    date: '12.03.2024',
-    note: 'Finans onayı sürecinde olan lisans yenilemesi.',
-    targetRoute: 'license-tracking',
-    targetLabel: 'Lisans kaydına git'
-  },
-  {
-    id: 'RQ-1041',
-    ifsNo: 'IFS-2024-041',
-    status: 'completed',
-    hardwareType: 'Kulaklık',
-    brand: 'Jabra',
-    model: 'Evolve 65',
-    quantity: '12 Adet',
-    date: '08.03.2024',
-    note: 'Teslim edildi ve envanter güncellendi.',
-    targetRoute: 'inventory-tracking',
-    targetLabel: 'Envanter kaydına git'
-  },
-  {
-    id: 'RQ-1033',
-    ifsNo: 'IFS-2024-033',
-    status: 'completed',
-    hardwareType: 'Toner',
-    brand: 'HP',
-    model: '410X',
-    quantity: '6 Kutu',
-    date: '06.03.2024',
-    note: 'Teslimat sonrası yazıcı stoğu yenilendi.',
-    targetRoute: 'printer-tracking',
-    targetLabel: 'Yazıcı kaydına git'
-  },
-  {
-    id: 'RQ-1027',
-    ifsNo: 'IFS-2024-027',
-    status: 'cancelled',
-    hardwareType: 'Erişim Yetkisi',
-    brand: 'SAP',
-    model: 'Kullanıcı Yetkisi',
-    quantity: '1 Talep',
-    date: '04.03.2024',
-    note: 'Talep sahibi tarafından iptal edildi. / İptal sebebi: Yetki ihtiyacı ortadan kalktı.',
-    targetRoute: 'records',
-    targetLabel: 'İşlem kaydına git',
-    cancellationReason: 'Yetki ihtiyacı ortadan kalktı.'
-  },
-  {
-    id: 'RQ-1019',
-    ifsNo: 'IFS-2024-019',
-    status: 'cancelled',
-    hardwareType: 'Ofis Ekipmanı',
-    brand: 'Canon',
-    model: 'iR-ADV DX 4745i',
-    quantity: '1 Ünite',
-    date: '01.03.2024',
-    note: 'Hurda komitesi kararı bekleniyor.',
-    targetRoute: 'scrap-management',
-    targetLabel: 'Hurda listesine git'
+const requests = ref<RequestRecord[]>([]);
+const isRequestsLoading = ref(true);
+const updatingRequestId = ref<string | null>(null);
+const isSubmittingRequest = ref(false);
+
+const mapRequestEntity = (entity: RequestEntity): RequestRecord => ({
+  id: entity.id,
+  ifsNo: entity.ifsNo,
+  status: entity.status,
+  hardwareType: entity.hardwareType,
+  brand: entity.brand,
+  model: entity.model,
+  quantity: entity.quantity,
+  date: entity.eventDate,
+  note: entity.note,
+  targetRoute: entity.targetRoute as RouteName,
+  targetLabel: entity.targetLabel,
+  cancellationReason: entity.cancellationReason ?? undefined
+});
+
+const loadRequestRecords = async () => {
+  try {
+    const records = await fetchRequestRecords();
+    requests.value = records.map(mapRequestEntity);
+  } catch (error) {
+    console.error('Talep kayıtları yüklenirken hata oluştu.', error);
+  } finally {
+    isRequestsLoading.value = false;
   }
-]);
+};
+
+onMounted(() => {
+  void loadRequestRecords();
+});
 
 const statusCopies: StatusCopy[] = [
   {
@@ -446,7 +417,11 @@ const resetRequestForm = () => {
   requestForm.items.splice(0, requestForm.items.length, createFormItem());
 };
 
-const submitRequestForm = () => {
+const submitRequestForm = async () => {
+  if (isSubmittingRequest.value) {
+    return;
+  }
+
   const trimmedIfs = requestForm.ifsNo.trim();
   const activeItems = requestForm.items.filter((item) =>
     [item.hardwareType, item.quantity, item.brand, item.model, item.note].some((value) => value.trim() !== '')
@@ -467,30 +442,57 @@ const submitRequestForm = () => {
   const submissionDate = new Date().toLocaleDateString('tr-TR');
   const generatedIfs = trimmedIfs || generateIfsNo();
 
-  activeItems.forEach((item) => {
-    const { route, label } = resolveTargetLink(item.hardwareType);
-    const newRequest: RequestRecord = {
-      id: `RQ-${Math.floor(Math.random() * 9000 + 1000)}`,
-      ifsNo: generatedIfs,
-      status: 'open',
-      hardwareType: item.hardwareType,
-      brand: item.brand || 'Belirtilmedi',
-      model: item.model || 'Belirtilmedi',
-      quantity: item.quantity || '1 Adet',
-      date: submissionDate,
-      note: item.note || 'Yeni talep kaydı oluşturuldu.',
-      targetRoute: route,
-      targetLabel: label
-    };
+  isSubmittingRequest.value = true;
 
-    requests.value.unshift(newRequest);
-  });
+  const createdRecords: RequestRecord[] = [];
 
-  selectedStatus.value = 'open';
-  closeRequestForm();
+  try {
+    for (const item of activeItems) {
+      const { route, label } = resolveTargetLink(item.hardwareType);
+      const newRecord: RequestRecord = {
+        id: `RQ-${Math.floor(Math.random() * 9000 + 1000)}`,
+        ifsNo: generatedIfs,
+        status: 'open',
+        hardwareType: item.hardwareType,
+        brand: item.brand || 'Belirtilmedi',
+        model: item.model || 'Belirtilmedi',
+        quantity: item.quantity || '1 Adet',
+        date: submissionDate,
+        note: item.note || 'Yeni talep kaydı oluşturuldu.',
+        targetRoute: route,
+        targetLabel: label
+      };
+
+      await insertRequestRecord({
+        id: newRecord.id,
+        ifsNo: newRecord.ifsNo,
+        status: newRecord.status,
+        hardwareType: newRecord.hardwareType,
+        brand: newRecord.brand,
+        model: newRecord.model,
+        quantity: newRecord.quantity,
+        eventDate: newRecord.date,
+        note: newRecord.note,
+        targetRoute: newRecord.targetRoute,
+        targetLabel: newRecord.targetLabel,
+        cancellationReason: null
+      });
+
+      createdRecords.push(newRecord);
+    }
+
+    requests.value = [...createdRecords, ...requests.value];
+    selectedStatus.value = 'open';
+    closeRequestForm();
+  } catch (error) {
+    console.error('Talep kaydı oluşturulamadı.', error);
+    window.alert('Talep kaydedilirken bir hata oluştu.');
+  } finally {
+    isSubmittingRequest.value = false;
+  }
 };
 
-const cancelRequest = (request: RequestRecord) => {
+const cancelRequest = async (request: RequestRecord) => {
   const reason = window.prompt('İptal sebebini giriniz', request.cancellationReason ?? '');
 
   if (reason === null) {
@@ -515,8 +517,25 @@ const cancelRequest = (request: RequestRecord) => {
       : `${previousRecord.note.replace(/\s*\/\s*İptal sebebi:.*/, '')} / İptal sebebi belirtilmedi.`
   };
 
+  updatingRequestId.value = updatedRecord.id;
   requests.value.splice(index, 1, updatedRecord);
-  selectedStatus.value = 'cancelled';
+
+  try {
+    await updateRequestRecord(updatedRecord.id, {
+      status: updatedRecord.status,
+      note: updatedRecord.note,
+      eventDate: updatedRecord.date,
+      cancellationReason: updatedRecord.cancellationReason ?? null
+    });
+
+    selectedStatus.value = 'cancelled';
+  } catch (error) {
+    console.error('Talep kaydı güncellenemedi.', error);
+    requests.value.splice(index, 1, previousRecord);
+    window.alert('Talep güncellenirken bir hata oluştu.');
+  } finally {
+    updatingRequestId.value = null;
+  }
 };
 </script>
 
@@ -631,6 +650,13 @@ h1 {
 .primary-button:hover {
   transform: translateY(-2px);
   box-shadow: 0 28px 40px rgba(37, 99, 235, 0.32);
+}
+
+.primary-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
 }
 
 .table-card {
@@ -773,6 +799,12 @@ h1 {
   border: none;
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.action-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 .action-button.stock {

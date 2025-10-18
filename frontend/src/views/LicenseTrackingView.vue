@@ -8,11 +8,6 @@
           Yazılım lisanslarını görüntüleyin ve yönetin. Anahtarların atama durumlarını, sorumlu ekipleri ve
           yenileme gereksinimlerini tek ekranda izleyin.
         </p>
-        <div class="hero-links">
-          <RouterLink :to="{ name: 'inventory-tracking' }" class="hero-link">Envantere git</RouterLink>
-          <RouterLink :to="{ name: 'request-tracking' }" class="hero-link">Talep kuyruğunu aç</RouterLink>
-          <RouterLink :to="{ name: 'records' }" class="hero-link">Kayıtları incele</RouterLink>
-        </div>
       </div>
       <div class="hero-actions">
         <button type="button" class="action primary" @click="createLicense">+ Yeni lisans</button>
@@ -90,40 +85,51 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(record, index) in filteredRecords" :key="record.id">
-              <td data-title="No">{{ index + 1 }}</td>
-              <td data-title="Lisans adı">
-                <span class="cell-title">{{ record.name }}</span>
-                <span class="status-tag" :class="`status-${record.status}`">{{ statusLabels[record.status] }}</span>
-              </td>
-              <td data-title="Anahtar">
-                <code class="license-key">{{ record.key }}</code>
-              </td>
-              <td data-title="Sorumlu">
-                <span class="cell-title">{{ record.owner }}</span>
-                <span class="cell-meta">{{ record.ownerRole }}</span>
-              </td>
-              <td data-title="Bağlı ünvanlar">{{ record.linkedUnits }}</td>
-              <td data-title="E-posta">{{ record.email }}</td>
-              <td data-title="Açıklama">
-                <span v-if="record.note" class="note">{{ record.note }}</span>
-                <span v-else class="note muted">-</span>
-              </td>
-              <td data-title="İşlemler" class="actions-cell">
-                <label class="sr-only" :for="`action-${record.id}`">{{ record.name }} işlemleri</label>
-                <select
-                  :id="`action-${record.id}`"
-                  :value="selectedActions[record.id] ?? ''"
-                  @change="(event) => handleActionChange(record, (event.target as HTMLSelectElement).value)"
-                >
-                  <option value="" disabled>Seçiniz...</option>
-                  <option value="detail">Detaya git</option>
-                  <option value="assign">Envantere yönlendir</option>
-                  <option value="request">Talep oluştur</option>
-                  <option value="cancel">Lisansı iptal et</option>
-                </select>
-              </td>
+            <tr v-if="isLicenseLoading">
+              <td colspan="8" class="empty-state">Lisans verileri yükleniyor...</td>
             </tr>
+            <tr v-else-if="licenseRecords.length === 0">
+              <td colspan="8" class="empty-state">Henüz lisans kaydı eklenmedi.</td>
+            </tr>
+            <template v-else>
+              <tr v-for="(record, index) in filteredRecords" :key="record.id">
+                <td data-title="No">{{ index + 1 }}</td>
+                <td data-title="Lisans adı">
+                  <span class="cell-title">{{ record.name }}</span>
+                  <span class="status-tag" :class="`status-${record.status}`">{{ statusLabels[record.status] }}</span>
+                </td>
+                <td data-title="Anahtar">
+                  <code class="license-key">{{ record.key }}</code>
+                </td>
+                <td data-title="Sorumlu">
+                  <span class="cell-title">{{ record.owner }}</span>
+                  <span class="cell-meta">{{ record.ownerRole }}</span>
+                </td>
+                <td data-title="Bağlı ünvanlar">{{ record.linkedUnits }}</td>
+                <td data-title="E-posta">{{ record.email }}</td>
+                <td data-title="Açıklama">
+                  <span v-if="record.note" class="note">{{ record.note }}</span>
+                  <span v-else class="note muted">-</span>
+                </td>
+                <td data-title="İşlemler" class="actions-cell">
+                  <label class="sr-only" :for="`action-${record.id}`">{{ record.name }} işlemleri</label>
+                  <select
+                    :id="`action-${record.id}`"
+                    :value="selectedActions[record.id] ?? ''"
+                    @change="(event) => handleActionChange(record, (event.target as HTMLSelectElement).value)"
+                  >
+                    <option value="" disabled>Seçiniz...</option>
+                    <option value="detail">Detaya git</option>
+                    <option value="assign">Envantere yönlendir</option>
+                    <option value="request">Talep oluştur</option>
+                    <option value="cancel">Lisansı iptal et</option>
+                  </select>
+                </td>
+              </tr>
+              <tr v-if="filteredRecords.length === 0">
+                <td colspan="8" class="empty-state">Seçili filtrelerde lisans bulunamadı.</td>
+              </tr>
+            </template>
           </tbody>
         </table>
       </div>
@@ -132,8 +138,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
+import { fetchLicenseRecords, updateLicenseRecord, type LicenseEntity } from '@/services/modules';
 
 interface LicenseRecord {
   id: number;
@@ -163,50 +170,35 @@ type FilterValue = 'all' | 'active' | 'expiring' | 'awaiting';
 
 const router = useRouter();
 
-const licenseRecords = ref<LicenseRecord[]>([
-  {
-    id: 1,
-    name: 'Microsoft 365 E3',
-    key: 'MSFT-O365-84J2',
-    owner: 'Sistem Yöneticisi',
-    ownerRole: 'Bulut Ekibi',
-    linkedUnits: 'Finans, Operasyon',
-    email: 'sistem@acme.com',
-    status: 'active'
-  },
-  {
-    id: 2,
-    name: 'Adobe Creative Cloud',
-    key: 'ADBE-CC-10S9',
-    owner: 'Tasarım Koordinatörü',
-    ownerRole: 'Tasarım Ekibi',
-    linkedUnits: 'Tasarım, Pazarlama',
-    email: 'design@acme.com',
-    status: 'expiring',
-    note: '7 gün içinde yenileme gerekiyor.'
-  },
-  {
-    id: 3,
-    name: 'JetBrains IntelliJ IDEA',
-    key: 'JETB-INT-660P',
-    owner: 'Ar-Ge Lideri',
-    ownerRole: 'Yazılım Ekibi',
-    linkedUnits: 'Ar-Ge',
-    email: 'rge@acme.com',
-    status: 'awaiting',
-    note: 'Yeni cihaz ataması bekliyor.'
-  },
-  {
-    id: 4,
-    name: 'Autodesk AutoCAD',
-    key: 'AUTO-CAD-332T',
-    owner: 'Proje Müdürü',
-    ownerRole: 'Mimari Tasarım',
-    linkedUnits: 'Mimari, Saha',
-    email: 'proje@acme.com',
-    status: 'active'
+const licenseRecords = ref<LicenseRecord[]>([]);
+const isLicenseLoading = ref(true);
+
+const mapLicenseEntity = (entity: LicenseEntity): LicenseRecord => ({
+  id: entity.id,
+  name: entity.name,
+  key: entity.licenseKey,
+  owner: entity.owner,
+  ownerRole: entity.ownerRole,
+  linkedUnits: entity.linkedUnits,
+  email: entity.email,
+  status: entity.status,
+  note: entity.note || undefined
+});
+
+const loadLicenseRecords = async () => {
+  try {
+    const records = await fetchLicenseRecords();
+    licenseRecords.value = records.map(mapLicenseEntity);
+  } catch (error) {
+    console.error('Lisans kayıtları yüklenirken hata oluştu.', error);
+  } finally {
+    isLicenseLoading.value = false;
   }
-]);
+};
+
+onMounted(() => {
+  void loadLicenseRecords();
+});
 
 const statusLabels = {
   active: 'Aktif',
@@ -287,7 +279,7 @@ const exportLicenses = () => {
   window.alert('Lisans listesi excel çıktısı olarak dışa aktarılıyor.');
 };
 
-const askForCancellationReason = (record: LicenseRecord) => {
+const askForCancellationReason = async (record: LicenseRecord) => {
   const reason = window.prompt('Lisans iptal sebebini giriniz:', record.note ?? '');
   if (!reason) {
     return;
@@ -295,9 +287,16 @@ const askForCancellationReason = (record: LicenseRecord) => {
 
   record.status = 'awaiting';
   record.note = `İptal edildi: ${reason}`;
+
+  try {
+    await updateLicenseRecord(record.id, record.status, record.note);
+  } catch (error) {
+    console.error('Lisans kaydı güncellenemedi.', error);
+    window.alert('Lisans kaydı güncellenirken bir hata oluştu.');
+  }
 };
 
-const handleActionChange = (record: LicenseRecord, value: string) => {
+const handleActionChange = async (record: LicenseRecord, value: string) => {
   if (!value) {
     return;
   }
@@ -313,7 +312,7 @@ const handleActionChange = (record: LicenseRecord, value: string) => {
       router.push({ name: 'request-tracking', query: { license: record.key } });
       break;
     case 'cancel':
-      askForCancellationReason(record);
+      await askForCancellationReason(record);
       break;
     default:
       break;
@@ -368,23 +367,6 @@ const handleActionChange = (record: LicenseRecord, value: string) => {
   font-size: 1rem;
   line-height: 1.6;
   color: #475569;
-}
-
-.hero-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
-}
-
-.hero-link {
-  color: #1d4ed8;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.hero-link:hover {
-  text-decoration: underline;
 }
 
 .hero-actions {

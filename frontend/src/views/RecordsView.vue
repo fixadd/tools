@@ -18,11 +18,19 @@
         </div>
       </header>
       <dl class="hero-metrics">
-        <div v-for="metric in heroMetrics" :key="metric.id">
-          <dt>{{ metric.label }}</dt>
-          <dd>{{ metric.value }}</dd>
-          <p class="metric-note">{{ metric.note }}</p>
-        </div>
+        <template v-if="isMetricsLoading">
+          <div class="metric-placeholder">Metrikler yükleniyor...</div>
+        </template>
+        <template v-else-if="heroMetrics.length === 0">
+          <div class="metric-placeholder">Henüz metrik oluşturulmadı.</div>
+        </template>
+        <template v-else>
+          <div v-for="metric in heroMetrics" :key="metric.id">
+            <dt>{{ metric.label }}</dt>
+            <dd>{{ metric.value }}</dd>
+            <p class="metric-note">{{ metric.note }}</p>
+          </div>
+        </template>
       </dl>
     </article>
 
@@ -33,17 +41,33 @@
           <p>Modüllerde gerçekleşen önemli hareketler kronolojik olarak listelenir.</p>
         </header>
         <ul class="timeline">
-          <li v-for="entry in logs" :key="entry.id" class="timeline-entry">
+          <li v-if="isLogsLoading" class="timeline-entry placeholder">
             <span class="timeline-dot" aria-hidden="true"></span>
             <div class="timeline-content">
-              <p class="timeline-title">{{ entry.title }}</p>
-              <p class="timeline-meta">{{ entry.time }} • {{ entry.actor }}</p>
-              <p class="timeline-note">{{ entry.detail }}</p>
-              <RouterLink :to="{ name: entry.routeName }" class="timeline-link">
-                {{ entry.linkLabel }}
-              </RouterLink>
+              <p class="timeline-title">Kayıtlar yükleniyor...</p>
+              <p class="timeline-meta">Lütfen bekleyin</p>
             </div>
           </li>
+          <li v-else-if="logs.length === 0" class="timeline-entry placeholder">
+            <span class="timeline-dot" aria-hidden="true"></span>
+            <div class="timeline-content">
+              <p class="timeline-title">Henüz işlem kaydı bulunmuyor.</p>
+              <p class="timeline-meta">Yeni işlemler burada görünecek.</p>
+            </div>
+          </li>
+          <template v-else>
+            <li v-for="entry in logs" :key="entry.id" class="timeline-entry">
+              <span class="timeline-dot" aria-hidden="true"></span>
+              <div class="timeline-content">
+                <p class="timeline-title">{{ entry.title }}</p>
+                <p class="timeline-meta">{{ entry.time }} • {{ entry.actor }}</p>
+                <p class="timeline-note">{{ entry.detail }}</p>
+                <RouterLink :to="{ name: entry.routeName }" class="timeline-link">
+                  {{ entry.linkLabel }}
+                </RouterLink>
+              </div>
+            </li>
+          </template>
         </ul>
       </article>
 
@@ -53,7 +77,9 @@
           <p>Operasyon ekipleri için dikkat edilmesi gereken değişikliklerin özeti.</p>
         </header>
         <ul class="insight-list">
-          <li v-for="insight in insights" :key="insight.id">
+          <li v-if="isInsightsLoading" class="insight-empty">Öne çıkan kayıtlar yükleniyor...</li>
+          <li v-else-if="insights.length === 0" class="insight-empty">Henüz öne çıkan kayıt bulunmuyor.</li>
+          <li v-else v-for="insight in insights" :key="insight.id">
             <div>
               <p class="insight-title">{{ insight.title }}</p>
               <p class="insight-note">{{ insight.note }}</p>
@@ -92,7 +118,16 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
+import {
+  fetchAuditInsights,
+  fetchAuditLogs,
+  fetchAuditMetrics,
+  type AuditInsightEntity,
+  type AuditLogEntity,
+  type AuditMetricEntity
+} from '@/services/modules';
 
 type RouteName =
   | 'request-tracking'
@@ -126,58 +161,82 @@ interface InsightItem {
   linkLabel: string;
 }
 
-const heroMetrics: HeroMetric[] = [
-  { id: 'week', label: 'Bu Hafta', value: '68', note: 'Loglanan işlem sayısı' },
-  { id: 'alerts', label: 'Uyarılar', value: '5', note: 'İncelenmesi gereken kayıt' },
-  { id: 'exports', label: 'Paylaşımlar', value: '3', note: 'Dışa aktarılan rapor' }
-];
+const heroMetrics = ref<HeroMetric[]>([]);
+const logs = ref<LogEntry[]>([]);
+const insights = ref<InsightItem[]>([]);
+const isMetricsLoading = ref(true);
+const isLogsLoading = ref(true);
+const isInsightsLoading = ref(true);
 
-const logs: LogEntry[] = [
-  {
-    id: '1',
-    title: 'Talep RQ-1041 envantere taşındı',
-    detail: 'Dell Latitude 5440 kaydı otomatik olarak envanter kartına işlendi.',
-    time: '12.03.2024 11:24',
-    actor: 'Selin Yılmaz',
-    routeName: 'inventory-tracking',
-    linkLabel: 'Envanter hareketini incele'
-  },
-  {
-    id: '2',
-    title: 'Hurda isteği için onay verildi',
-    detail: 'Canon iR-ADV DX 4745i yazıcı hurda deposuna taşındı.',
-    time: '11.03.2024 15:42',
-    actor: 'Baran Yıldız',
-    routeName: 'scrap-management',
-    linkLabel: 'Hurda kaydını görüntüle'
-  },
-  {
-    id: '3',
-    title: 'LDAP bağlantı bilgisi güncellendi',
-    detail: 'Yeni servis hesabı eklendi ve parola sıfırlandı.',
-    time: '10.03.2024 09:15',
-    actor: 'IT Operasyonları',
-    routeName: 'admin-panel',
-    linkLabel: 'Bağlantı ayarını kontrol et'
-  }
-];
+const mapMetricEntity = (entity: AuditMetricEntity): HeroMetric => ({
+  id: entity.id,
+  label: entity.label,
+  value: entity.value,
+  note: entity.note
+});
 
-const insights: InsightItem[] = [
-  {
-    id: '1',
-    title: 'Talep onay SLA sınırına yaklaşıyor',
-    note: 'Bekleyen 5 talep için stok teyidi yapılmalı.',
-    routeName: 'request-tracking',
-    linkLabel: 'Bekleyen talepleri aç'
-  },
-  {
-    id: '2',
-    title: 'Hurda prosedürü güncellemesi',
-    note: 'Yeni imha formu bilgi bankasına eklendi.',
-    routeName: 'knowledge-base',
-    linkLabel: 'Dokümana git'
+const mapLogEntity = (entity: AuditLogEntity): LogEntry => ({
+  id: String(entity.id),
+  title: entity.title,
+  detail: entity.detail,
+  time: entity.eventTime,
+  actor: entity.actor,
+  routeName: entity.routeName as RouteName,
+  linkLabel: entity.linkLabel
+});
+
+const mapInsightEntity = (entity: AuditInsightEntity): InsightItem => ({
+  id: String(entity.id),
+  title: entity.title,
+  note: entity.note,
+  routeName: entity.routeName as RouteName,
+  linkLabel: entity.linkLabel
+});
+
+const loadAuditData = async () => {
+  try {
+    const [metricsData, logsData, insightsData] = await Promise.all([
+      fetchAuditMetrics(),
+      fetchAuditLogs(),
+      fetchAuditInsights()
+    ]);
+
+    heroMetrics.value = metricsData.map(mapMetricEntity);
+    logs.value = logsData.map(mapLogEntity);
+    insights.value = insightsData.map(mapInsightEntity);
+  } catch (error) {
+    console.error('Kayıt verileri yüklenirken hata oluştu.', error);
+  } finally {
+    isMetricsLoading.value = false;
+    isLogsLoading.value = false;
+    isInsightsLoading.value = false;
   }
-];
+};
+
+onMounted(() => {
+  void loadAuditData();
+});
 </script>
 
 <style scoped src="@/styles/workspace.css"></style>
+
+<style scoped>
+.metric-placeholder {
+  display: grid;
+  place-items: center;
+  min-height: 80px;
+  color: #475569;
+  font-weight: 500;
+}
+
+.timeline-entry.placeholder {
+  opacity: 0.7;
+}
+
+.insight-empty {
+  text-align: center;
+  padding: 1rem 0;
+  color: #64748b;
+  font-weight: 500;
+}
+</style>
