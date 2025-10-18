@@ -10,10 +10,6 @@
             talep süreçleri ile tüm cihazların aktif durumunu yönetin.
           </p>
         </div>
-        <div class="hero-actions">
-          <RouterLink :to="{ name: 'stock-tracking' }" class="primary-action">Toner stoklarını aç</RouterLink>
-          <RouterLink :to="{ name: 'request-tracking' }" class="secondary-link">Servis taleplerini gör</RouterLink>
-        </div>
       </header>
       <dl class="hero-metrics">
         <div v-for="metric in heroMetrics" :key="metric.id">
@@ -40,17 +36,25 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="printer in printers" :key="printer.assetId">
-              <td>
-                <span class="summary-title">{{ printer.name }}</span>
-                <p class="summary-meta">{{ printer.assetId }}</p>
-              </td>
-              <td>{{ printer.location }}</td>
-              <td>{{ printer.supply }}</td>
-              <td>
-                <span class="status-chip">{{ statusLabels[printer.status] }}</span>
-              </td>
+            <tr v-if="isPrinterLoading">
+              <td colspan="4" class="empty-state">Yazıcı verileri yükleniyor...</td>
             </tr>
+            <tr v-else-if="printers.length === 0">
+              <td colspan="4" class="empty-state">Henüz kayıtlı yazıcı bulunmuyor.</td>
+            </tr>
+            <template v-else>
+              <tr v-for="printer in printers" :key="printer.assetId">
+                <td>
+                  <span class="summary-title">{{ printer.name }}</span>
+                  <p class="summary-meta">{{ printer.assetId }}</p>
+                </td>
+                <td>{{ printer.location }}</td>
+                <td>{{ printer.supply }}</td>
+                <td>
+                  <span class="status-chip">{{ statusLabels[printer.status] }}</span>
+                </td>
+              </tr>
+            </template>
           </tbody>
         </table>
       </article>
@@ -60,13 +64,11 @@
           <h2 id="printer-links">Entegrasyonlar</h2>
           <p>Yazıcı süreçlerini destekleyen modüllere hızlı geçiş yapın.</p>
         </header>
-        <div class="quick-actions">
-          <RouterLink v-for="link in relatedLinks" :key="link.title" :to="link.to">
-            {{ link.title }} <span aria-hidden="true">→</span>
-          </RouterLink>
-        </div>
+        <ul class="quick-actions">
+          <li v-for="link in relatedLinks" :key="link">{{ link }}</li>
+        </ul>
         <footer>
-          <RouterLink :to="{ name: 'knowledge-base' }" class="card-link">Bakım rehberlerini aç</RouterLink>
+          <p class="card-link muted">Bakım rehberleri güncel tutuluyor</p>
         </footer>
       </article>
 
@@ -76,16 +78,30 @@
           <p>Bakım ve sarf taleplerinin tarihçesi.</p>
         </header>
         <ul class="timeline">
-          <li v-for="entry in movementLog" :key="entry.id" class="timeline-entry">
+          <li v-if="isPrinterLogLoading" class="timeline-entry">
             <span class="timeline-dot" aria-hidden="true"></span>
             <div class="timeline-content">
-              <p class="timeline-title">{{ entry.text }}</p>
-              <p class="timeline-meta">{{ entry.time }}</p>
-              <RouterLink v-if="entry.relatedRoute" :to="entry.relatedRoute" class="timeline-link">
-                İşleme git
-              </RouterLink>
+              <p class="timeline-title">Servis kayıtları yükleniyor...</p>
+              <p class="timeline-meta">Lütfen bekleyin</p>
             </div>
           </li>
+          <li v-else-if="movementLog.length === 0" class="timeline-entry">
+            <span class="timeline-dot" aria-hidden="true"></span>
+            <div class="timeline-content">
+              <p class="timeline-title">Henüz servis kaydı oluşturulmadı.</p>
+              <p class="timeline-meta">Kayıt eklemek için talep açın.</p>
+            </div>
+          </li>
+          <template v-else>
+            <li v-for="entry in movementLog" :key="entry.id" class="timeline-entry">
+              <span class="timeline-dot" aria-hidden="true"></span>
+              <div class="timeline-content">
+                <p class="timeline-title">{{ entry.text }}</p>
+                <p class="timeline-meta">{{ entry.time }}</p>
+                <span v-if="entry.linkLabel" class="timeline-link muted">{{ entry.linkLabel }}</span>
+              </div>
+            </li>
+          </template>
         </ul>
       </article>
     </div>
@@ -94,16 +110,13 @@
       <h2>Yazıcı Operasyon Akışı</h2>
       <ol class="workflow-steps">
         <li>
-          Toner uyarısı geldiğinde ilgili stok kaydı <RouterLink :to="{ name: 'stock-tracking' }">Stok Takip</RouterLink>
-          modülünde güncellenir.
+          Toner uyarısı geldiğinde ilgili stok kaydı stok takip ekranında güncellenir.
         </li>
         <li>
-          Servis talepleri <RouterLink :to="{ name: 'request-tracking' }">Talep Takip</RouterLink> üzerinden
-          planlanır ve sonuçları <RouterLink :to="{ name: 'records' }">Kayıtlar</RouterLink> modülüne aktarılır.
+          Servis talepleri planlanır ve sonuçları kayıt altına alınır.
         </li>
         <li>
-          Cihaz değişimleri <RouterLink :to="{ name: 'inventory-tracking' }">Envanter</RouterLink> ve
-          <RouterLink :to="{ name: 'scrap-management' }">Hurda</RouterLink> modülleriyle senkronize edilir.
+          Cihaz değişimleri envanter ve hurda kayıtlarıyla eşleştirilir.
         </li>
       </ol>
     </article>
@@ -111,8 +124,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import { RouterLink, type RouteLocationRaw } from 'vue-router';
+import { computed, onMounted, ref } from 'vue';
+import { fetchPrinterLogs, fetchPrinters, type PrinterEntity, type PrinterLogEntity } from '@/services/modules';
 
 const statusLabels = {
   online: 'Çevrimiçi',
@@ -137,80 +150,83 @@ interface PrinterRow {
   status: PrinterStatus;
 }
 
-interface RelatedLink {
-  title: string;
-  to: RouteLocationRaw;
-}
-
 interface MovementLogEntry {
   id: number;
   time: string;
   text: string;
-  relatedRoute?: RouteLocationRaw;
+  linkLabel?: string;
 }
 
-const printers: PrinterRow[] = [
-  {
-    assetId: 'PRN-201',
-    name: 'HP LaserJet Pro M428',
-    location: 'Muhasebe',
-    supply: 'Toner %65',
-    status: 'online'
-  },
-  {
-    assetId: 'PRN-312',
-    name: 'Canon iR-ADV 525i',
-    location: 'Satış',
-    supply: 'Toner %28',
-    status: 'warning'
-  },
-  {
-    assetId: 'PRN-104',
-    name: 'Epson Workforce WF-4830',
-    location: 'Genel Kullanım',
-    supply: 'Kartuş %12',
-    status: 'maintenance'
+const printers = ref<PrinterRow[]>([]);
+const movementLog = ref<MovementLogEntry[]>([]);
+const isPrinterLoading = ref(true);
+const isPrinterLogLoading = ref(true);
+
+const mapPrinterEntity = (entity: PrinterEntity): PrinterRow => ({
+  assetId: entity.assetId,
+  name: entity.name,
+  location: entity.location,
+  supply: entity.supply,
+  status: entity.status
+});
+
+const mapPrinterLogEntity = (entity: PrinterLogEntity): MovementLogEntry => ({
+  id: entity.id,
+  time: entity.entryTime,
+  text: entity.description,
+  linkLabel: entity.linkLabel || undefined
+});
+
+const loadPrinters = async () => {
+  try {
+    const records = await fetchPrinters();
+    printers.value = records.map(mapPrinterEntity);
+  } catch (error) {
+    console.error('Yazıcı kayıtları yüklenirken hata oluştu.', error);
+  } finally {
+    isPrinterLoading.value = false;
   }
-];
+};
+
+const loadPrinterLogs = async () => {
+  try {
+    const logs = await fetchPrinterLogs();
+    movementLog.value = logs.map(mapPrinterLogEntity);
+  } catch (error) {
+    console.error('Yazıcı logları yüklenirken hata oluştu.', error);
+  } finally {
+    isPrinterLogLoading.value = false;
+  }
+};
+
+onMounted(() => {
+  void loadPrinters();
+  void loadPrinterLogs();
+});
 
 const heroMetrics = computed<HeroMetric[]>(() => {
-  const online = printers.filter((printer) => printer.status === 'online').length;
-  const warning = printers.filter((printer) => printer.status === 'warning').length;
-  const maintenance = printers.filter((printer) => printer.status === 'maintenance').length;
+  const online = printers.value.filter((printer) => printer.status === 'online').length;
+  const warning = printers.value.filter((printer) => printer.status === 'warning').length;
+  const maintenance = printers.value.filter((printer) => printer.status === 'maintenance').length;
 
   return [
-    { id: 'total', label: 'Takipteki Cihaz', value: String(printers.length), note: 'Aktif yazıcı sayısı' },
+    { id: 'total', label: 'Takipteki Cihaz', value: String(printers.value.length), note: 'Aktif yazıcı sayısı' },
     { id: 'online', label: 'Çevrimiçi', value: String(online), note: 'Kullanıma hazır yazıcı' },
     { id: 'warning', label: 'Düşük Sarf', value: String(warning), note: 'Toner seviyesi kritik' },
     { id: 'maintenance', label: 'Servis Bekleyen', value: String(maintenance), note: 'Planlanan bakım' }
   ];
 });
 
-const relatedLinks: RelatedLink[] = [
-  { title: 'Stok Takip', to: { name: 'stock-tracking' } },
-  { title: 'Envanter Takip', to: { name: 'inventory-tracking' } },
-  { title: 'Talep Takip', to: { name: 'request-tracking' } }
-];
-
-const movementLog: MovementLogEntry[] = [
-  {
-    id: 1,
-    time: 'Bugün 10:12',
-    text: 'HP LaserJet Pro M428 cihazı için stoktan toner çıkışı yapıldı.',
-    relatedRoute: { name: 'stock-tracking' }
-  },
-  {
-    id: 2,
-    time: 'Dün 15:40',
-    text: 'Canon iR-ADV 525i için bakım talebi oluşturuldu.',
-    relatedRoute: { name: 'request-tracking' }
-  },
-  {
-    id: 3,
-    time: 'Dün 09:05',
-    text: 'Epson Workforce WF-4830 cihazı geçici olarak kullanım dışı işaretlendi.'
-  }
-];
+const relatedLinks = ['Stok durum özetleri', 'Envanter güncellemeleri', 'Talep kayıtları'];
 </script>
 
 <style scoped src="@/styles/workspace.css"></style>
+
+<style scoped>
+.empty-state {
+  padding: 1.25rem;
+  text-align: center;
+  color: #475569;
+  font-weight: 500;
+}
+</style>

@@ -27,10 +27,6 @@
             yönetin. Talep ve envanter ekipleriyle bağlantılı çalışın.
           </p>
         </div>
-        <div class="header-actions">
-          <RouterLink :to="{ name: 'records' }" class="secondary-action">Arıza Durumu</RouterLink>
-          <RouterLink :to="{ name: 'inventory-tracking' }" class="primary-action">Anlık Durum</RouterLink>
-        </div>
       </header>
 
       <section class="toolbar">
@@ -68,9 +64,6 @@
               {{ tab.label }}
             </button>
           </div>
-          <RouterLink :to="{ name: 'request-tracking' }" class="link-button">
-            Talep kuyruğunu aç
-          </RouterLink>
         </header>
 
         <div
@@ -109,31 +102,51 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in filteredStock" :key="item.id">
-                <td data-title="IFS No">{{ item.ifsNo }}</td>
-                <td data-title="Donanım Tipi">{{ item.type }}</td>
-                <td data-title="Marka">{{ item.brand }}</td>
-                <td data-title="Model">{{ item.model }}</td>
-                <td data-title="Miktar">{{ item.quantity }}</td>
-                <td data-title="Tarih">{{ item.date }}</td>
-                <td data-title="Açıklama">
-                  <span>{{ item.description }}</span>
-                  <small v-if="item.cancelReason" class="cancel-reason">
-                    İptal Notu: {{ item.cancelReason }}
-                  </small>
-                </td>
-                <td data-title="İşlemler" class="actions">
-                  <button type="button" class="stock-action" @click="handleStockIn(item)">
-                    Stok Gir
-                  </button>
-                  <button type="button" class="cancel-action" @click="handleCancel(item)">
-                    İptal
-                  </button>
-                </td>
+              <tr v-if="isStockLoading">
+                <td colspan="8" class="empty">Stok verileri yükleniyor...</td>
               </tr>
-              <tr v-if="!filteredStock.length">
-                <td colspan="8" class="empty">Stok bulunamadı</td>
+              <tr v-else-if="stockRows.length === 0">
+                <td colspan="8" class="empty">Henüz stok kaydı eklenmedi.</td>
               </tr>
+              <template v-else>
+                <tr v-for="item in filteredStock" :key="item.id">
+                  <td data-title="IFS No">{{ item.ifsNo }}</td>
+                  <td data-title="Donanım Tipi">{{ item.type }}</td>
+                  <td data-title="Marka">{{ item.brand }}</td>
+                  <td data-title="Model">{{ item.model }}</td>
+                  <td data-title="Miktar">{{ item.quantity }}</td>
+                  <td data-title="Tarih">{{ item.date }}</td>
+                  <td data-title="Açıklama">
+                    <span>{{ item.description }}</span>
+                    <small v-if="item.cancelReason" class="cancel-reason">
+                      İptal Notu: {{ item.cancelReason }}
+                    </small>
+                  </td>
+                  <td data-title="İşlemler" class="actions">
+                    <button
+                      type="button"
+                      class="stock-action"
+                      :disabled="updatingRowId === item.id"
+                      @click="handleStockIn(item)"
+                    >
+                      <span v-if="updatingRowId === item.id">Güncelleniyor...</span>
+                      <span v-else>Stok Gir</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="cancel-action"
+                      :disabled="updatingRowId === item.id"
+                      @click="handleCancel(item)"
+                    >
+                      <span v-if="updatingRowId === item.id">Bekleyin...</span>
+                      <span v-else>İptal</span>
+                    </button>
+                  </td>
+                </tr>
+                <tr v-if="filteredStock.length === 0">
+                  <td colspan="8" class="empty">Seçili filtrelerde stok bulunamadı.</td>
+                </tr>
+              </template>
             </tbody>
           </table>
         </div>
@@ -146,7 +159,9 @@
           class="tab-content"
         >
           <ul class="log-list">
-            <li v-for="entry in movementLog" :key="entry.id" class="log-entry">
+            <li v-if="isStockLoading" class="log-empty">Hareket kayıtları yükleniyor...</li>
+            <li v-else-if="movementLog.length === 0" class="log-empty">Henüz hareket kaydı yok.</li>
+            <li v-else v-for="entry in movementLog" :key="entry.id" class="log-entry">
               <div>
                 <p class="log-title">{{ entry.title }}</p>
                 <p class="log-meta">{{ entry.time }}</p>
@@ -163,8 +178,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { RouterLink, type RouteLocationRaw } from 'vue-router';
+import { fetchStockRecords, updateStockDescription, type StockEntity } from '@/services/modules';
 
 interface NavigationLink {
   label: string;
@@ -214,11 +230,17 @@ const navigation: NavigationLink[] = [
   { label: 'Kayıtlar', to: { name: 'records' }, routeName: 'records' }
 ];
 
-const heroStats: HeroStat[] = [
-  { id: 'incoming', label: 'Bekleyen Giriş', value: '14', note: 'Talep kuyruğundan doğrulanmayı bekliyor' },
-  { id: 'prepared', label: 'Çıkışa Hazır', value: '7', note: 'Envanter aktarımına hazır kalem' },
-  { id: 'returned', label: 'İadeden Gelen', value: '3', note: 'Kontrolden sonra stokta tutulanlar' }
-];
+const heroStats = computed<HeroStat[]>(() => {
+  const total = stockRows.value.length;
+  const prepared = stockRows.value.filter((row) => row.category === 'envanter').length;
+  const returned = stockRows.value.filter((row) => row.category === 'sistem').length;
+
+  return [
+    { id: 'incoming', label: 'Bekleyen Giriş', value: String(total), note: 'Aktif stok kalemi' },
+    { id: 'prepared', label: 'Çıkışa Hazır', value: String(prepared), note: 'Envantere aktarılacaklar' },
+    { id: 'returned', label: 'İadeden Gelen', value: String(returned), note: 'Kontrolden dönenler' }
+  ];
+});
 
 const tabs = [
   { id: 'stock', label: 'Stok Durumu' },
@@ -237,79 +259,53 @@ const searchTerm = ref('');
 const activeTab = ref<typeof tabs[number]['id']>('stock');
 const activeSegment = ref<Segment['id']>('all');
 
-const stockRows = ref<StockRow[]>([
-  {
-    id: 1,
-    ifsNo: 'IFS-48765',
-    type: 'Laptop',
-    brand: 'Lenovo',
-    model: 'ThinkPad T14',
-    quantity: '5',
-    date: '08.04.2024',
-    description: 'Yeni ekip ataması için beklemede',
-    category: 'envanter'
-  },
-  {
-    id: 2,
-    ifsNo: 'IFS-48801',
-    type: 'Lisans',
-    brand: 'Microsoft',
-    model: 'Office 365 E5',
-    quantity: '12',
-    date: '07.04.2024',
-    description: 'Güvenlik ekibine tahsis edilecek',
-    category: 'lisans'
-  },
-  {
-    id: 3,
-    ifsNo: 'IFS-48842',
-    type: 'Yazıcı',
-    brand: 'HP',
-    model: 'LaserJet Pro M404dn',
-    quantity: '2',
-    date: '05.04.2024',
-    description: 'Bölge ofisinden iade edildi',
-    category: 'yazici'
-  },
-  {
-    id: 4,
-    ifsNo: 'IFS-48915',
-    type: 'Sunucu',
-    brand: 'Dell',
-    model: 'PowerEdge R760',
-    quantity: '1',
-    date: '02.04.2024',
-    description: 'Yeni sistem odası kurulumu',
-    category: 'sistem'
-  }
-]);
+const stockRows = ref<StockRow[]>([]);
+const isStockLoading = ref(true);
+const updatingRowId = ref<number | null>(null);
 
-const movementLog = computed<MovementEntry[]>(() => [
-  {
-    id: 1,
-    title: 'IFS-48765 stok girişi onaylandı, envantere aktarıldı.',
-    time: '08.04.2024 11:32',
-    route: { name: 'inventory-tracking' }
-  },
-  {
-    id: 2,
-    title: 'IFS-48801 lisans kaydı bilgi işlem tarafından talep edildi.',
-    time: '07.04.2024 09:15',
-    route: { name: 'license-tracking' }
-  },
-  {
-    id: 3,
-    title: 'IFS-48842 yazıcı kontrol sonrası stokta tutuluyor.',
-    time: '06.04.2024 16:54',
-    route: { name: 'printer-tracking' }
-  },
-  {
-    id: 4,
-    title: 'IFS-48915 sistem odası kurulum kaydı açıldı.',
-    time: '02.04.2024 14:28',
-    route: { name: 'records' }
+const mapStockEntity = (entity: StockEntity): StockRow => ({
+  id: entity.id,
+  ifsNo: entity.ifsNo,
+  type: entity.itemType,
+  brand: entity.brand,
+  model: entity.model,
+  quantity: entity.quantity,
+  date: entity.eventDate,
+  description: entity.description,
+  category: (entity.category as Segment['id']) || 'envanter',
+  cancelReason: entity.cancelReason ?? undefined
+});
+
+const loadStockRecords = async () => {
+  try {
+    const records = await fetchStockRecords();
+    stockRows.value = records.map(mapStockEntity);
+  } catch (error) {
+    console.error('Stok kayıtları yüklenirken hata oluştu.', error);
+  } finally {
+    isStockLoading.value = false;
   }
-]);
+};
+
+onMounted(() => {
+  void loadStockRecords();
+});
+
+const logRouteMap: Record<string, RouteLocationRaw> = {
+  envanter: { name: 'inventory-tracking' },
+  yazici: { name: 'printer-tracking' },
+  lisans: { name: 'license-tracking' },
+  sistem: { name: 'records' }
+};
+
+const movementLog = computed<MovementEntry[]>(() =>
+  stockRows.value.slice(0, 8).map((row) => ({
+    id: row.id,
+    title: `${row.ifsNo} kaydı güncellendi: ${row.description}`,
+    time: row.date,
+    route: logRouteMap[row.category] ?? { name: 'stock-tracking' }
+  }))
+);
 
 const filteredStock = computed(() => {
   const query = searchTerm.value.trim().toLowerCase();
@@ -329,19 +325,39 @@ const filteredStock = computed(() => {
   });
 });
 
-function handleStockIn(row: StockRow) {
-  row.cancelReason = undefined;
-  row.description = 'Envantere aktarıldı, zimmet bekleniyor';
+async function updateStockRow(row: StockRow, updates: Partial<Pick<StockRow, 'description' | 'cancelReason'>>) {
+  const previous = { description: row.description, cancelReason: row.cancelReason };
+  updatingRowId.value = row.id;
+  Object.assign(row, updates);
+
+  try {
+    await updateStockDescription(row.id, row.description, row.cancelReason ?? null);
+  } catch (error) {
+    console.error('Stok kaydı güncellenemedi.', error);
+    Object.assign(row, previous);
+    window.alert('Stok kaydı güncellenirken bir hata oluştu.');
+  } finally {
+    updatingRowId.value = null;
+  }
 }
 
-function handleCancel(row: StockRow) {
+async function handleStockIn(row: StockRow) {
+  await updateStockRow(row, {
+    cancelReason: undefined,
+    description: 'Envantere aktarıldı, zimmet bekleniyor'
+  });
+}
+
+async function handleCancel(row: StockRow) {
   const reason = window.prompt('İptal sebebini girin');
   if (!reason) {
     return;
   }
 
-  row.cancelReason = reason;
-  row.description = 'Talep kapatıldı, depoda bekliyor';
+  await updateStockRow(row, {
+    cancelReason: reason,
+    description: 'Talep kapatıldı, depoda bekliyor'
+  });
 }
 
 function resetFilters() {
@@ -451,39 +467,6 @@ function resetFilters() {
   margin: 0;
 }
 
-.header-actions {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.primary-action,
-.secondary-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.55rem 1.1rem;
-  border-radius: 999px;
-  text-decoration: none;
-  font-weight: 600;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.primary-action {
-  background: linear-gradient(135deg, #fbbf24, #f97316);
-  color: #0f172a;
-}
-
-.secondary-action {
-  background: rgba(248, 113, 113, 0.18);
-  color: #b91c1c;
-}
-
-.primary-action:hover,
-.secondary-action:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
-}
-
 .toolbar {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -582,12 +565,6 @@ function resetFilters() {
   box-shadow: 0 12px 24px rgba(29, 78, 216, 0.18);
 }
 
-.link-button {
-  color: #1d4ed8;
-  font-weight: 600;
-  text-decoration: none;
-}
-
 .segment-filters {
   display: flex;
   flex-wrap: wrap;
@@ -683,6 +660,14 @@ function resetFilters() {
   box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
 }
 
+.stock-action:disabled,
+.cancel-action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
 .empty {
   text-align: center;
   padding: 2.5rem 1rem;
@@ -700,6 +685,13 @@ function resetFilters() {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.log-empty {
+  text-align: center;
+  color: #94a3b8;
+  font-weight: 500;
+  padding: 1.25rem 0;
 }
 
 .log-entry {
@@ -762,11 +754,6 @@ function resetFilters() {
 }
 
 @media (max-width: 768px) {
-  .header-actions {
-    flex-direction: column;
-    width: 100%;
-  }
-
   .stock-table,
   .stock-table thead,
   .stock-table tbody,

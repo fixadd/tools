@@ -10,10 +10,6 @@
             onaylama ve imha adımlarını kayıt altında tutarak envanter döngüsünü tamamlayın.
           </p>
         </div>
-        <div class="hero-actions">
-          <RouterLink :to="{ name: 'request-tracking' }" class="primary-action">Talep akışına dön</RouterLink>
-          <RouterLink :to="{ name: 'records' }" class="secondary-link">Hurda loglarını aç</RouterLink>
-        </div>
       </header>
       <dl class="hero-metrics">
         <div v-for="metric in heroMetrics" :key="metric.id">
@@ -40,16 +36,20 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in evaluationItems" :key="item.id">
+            <tr v-if="isEvaluationLoading">
+              <td colspan="4" class="empty-state">Hurda değerlendirmeleri yükleniyor...</td>
+            </tr>
+            <tr v-else-if="evaluationItems.length === 0">
+              <td colspan="4" class="empty-state">Değerlendirme bekleyen hurda bulunmuyor.</td>
+            </tr>
+            <tr v-else v-for="item in evaluationItems" :key="item.id">
               <td>
                 <span class="summary-title">{{ item.asset }}</span>
                 <p class="summary-meta">{{ item.tag }}</p>
               </td>
               <td>{{ item.status }}</td>
               <td>
-                <RouterLink :to="{ name: 'request-tracking' }" class="table-link">
-                  {{ item.requestId }}
-                </RouterLink>
+                <span class="table-link">{{ item.requestId }}</span>
               </td>
               <td>{{ item.updatedAt }}</td>
             </tr>
@@ -63,20 +63,15 @@
           <p>Onaylanmış ve imha planı oluşturulmuş varlıklar.</p>
         </header>
         <ul class="status-list">
-          <li v-for="record in completedItems" :key="record.id">
+          <li v-if="isCompletedLoading" class="empty-state">Tamamlanan hurda kayıtları yükleniyor...</li>
+          <li v-else-if="completedItems.length === 0" class="empty-state">Henüz tamamlanan hurda kaydı yok.</li>
+          <li v-else v-for="record in completedItems" :key="record.id">
             <p class="status-title">{{ record.asset }}</p>
             <p class="status-meta">{{ record.serial }} • {{ record.location }}</p>
             <p class="status-note">{{ record.note }}</p>
-            <RouterLink :to="{ name: record.relatedRoute }" class="card-link">
-              {{ record.relatedLabel }}
-            </RouterLink>
+            <p class="card-link muted">{{ record.relatedLabel }}</p>
           </li>
         </ul>
-        <footer>
-          <RouterLink :to="{ name: 'inventory-tracking' }" class="card-link">
-            Envanterdeki karşılıkları kontrol et
-          </RouterLink>
-        </footer>
       </article>
     </div>
 
@@ -87,24 +82,21 @@
           Talep modülünden gelen hurda isteği teknik değerlendirmeden geçer ve değer kaybı raporu
           hazırlanır.
         </li>
-        <li>
-          Onaylanan cihazlar için <RouterLink :to="{ name: 'admin-panel' }">Admin Paneli</RouterLink>
-          üzerinden yetkili imzalar toplanır.
-        </li>
-        <li>
-          İmha edilen ekipmanlar <RouterLink :to="{ name: 'records' }">Kayıtlar</RouterLink> modülüne
-          aktarılır ve finans birimine raporlanır.
-        </li>
+        <li>Onaylanan cihazlar için yetkili imzalar toplanır.</li>
+        <li>İmha edilen ekipmanlar raporlanır ve ilgili ekiplerle paylaşılır.</li>
       </ol>
     </article>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import { RouterLink } from 'vue-router';
-
-type RouteName = 'printer-tracking' | 'inventory-tracking' | 'scrap-management' | 'records';
+import { computed, onMounted, ref } from 'vue';
+import {
+  fetchScrapCompleted,
+  fetchScrapEvaluation,
+  type ScrapCompletedEntity,
+  type ScrapEvaluationEntity
+} from '@/services/modules';
 
 interface HeroMetric {
   id: string;
@@ -128,59 +120,81 @@ interface CompletedItem {
   serial: string;
   location: string;
   note: string;
-  relatedRoute: RouteName;
   relatedLabel: string;
 }
 
-const evaluationItems: EvaluationItem[] = [
-  {
-    id: '1',
-    asset: 'Canon iR-ADV DX 4745i Yazıcı',
-    tag: 'PRN-00213',
-    status: 'Teknik inceleme bekleniyor',
-    requestId: 'RQ-1019',
-    updatedAt: '11.03.2024'
-  },
-  {
-    id: '2',
-    asset: 'Dell OptiPlex 7080 SFF',
-    tag: 'INV-00874',
-    status: 'Finans onayı aşamasında',
-    requestId: 'RQ-1008',
-    updatedAt: '10.03.2024'
-  }
-];
+const evaluationItems = ref<EvaluationItem[]>([]);
+const completedItems = ref<CompletedItem[]>([]);
+const isEvaluationLoading = ref(true);
+const isCompletedLoading = ref(true);
 
-const completedItems: CompletedItem[] = [
-  {
-    id: '1',
-    asset: 'HP LaserJet Pro M404dn',
-    serial: 'CNBXJ1F035',
-    location: 'Merkez depo',
-    note: 'Yedek parça olarak ayrıldı, toner deposu aktarıldı.',
-    relatedRoute: 'printer-tracking',
-    relatedLabel: 'Yazıcı kaydını incele'
-  },
-  {
-    id: '2',
-    asset: 'Lenovo ThinkPad T490',
-    serial: 'PF1ABCD23',
-    location: 'Hurda deposu',
-    note: 'Parola sıfırlama başarısız, disk imhası tamamlandı.',
-    relatedRoute: 'inventory-tracking',
-    relatedLabel: 'Envanter geçmişini aç'
+const mapEvaluationEntity = (entity: ScrapEvaluationEntity): EvaluationItem => ({
+  id: entity.id,
+  asset: entity.asset,
+  tag: entity.tag,
+  status: entity.status,
+  requestId: entity.requestId,
+  updatedAt: entity.updatedAt
+});
+
+const mapCompletedEntity = (entity: ScrapCompletedEntity): CompletedItem => ({
+  id: entity.id,
+  asset: entity.asset,
+  serial: entity.serial,
+  location: entity.location,
+  note: entity.note,
+  relatedLabel: entity.relatedLabel
+});
+
+const loadScrapData = async () => {
+  try {
+    const [evaluation, completed] = await Promise.all([
+      fetchScrapEvaluation(),
+      fetchScrapCompleted()
+    ]);
+
+    evaluationItems.value = evaluation.map(mapEvaluationEntity);
+    completedItems.value = completed.map(mapCompletedEntity);
+  } catch (error) {
+    console.error('Hurda kayıtları yüklenirken hata oluştu.', error);
+  } finally {
+    isEvaluationLoading.value = false;
+    isCompletedLoading.value = false;
   }
-];
+};
+
+onMounted(() => {
+  void loadScrapData();
+});
 
 const heroMetrics = computed<HeroMetric[]>(() => {
-  const financePending = evaluationItems.filter((item) => item.status.includes('Finans')).length;
+  const financePending = evaluationItems.value.filter((item) => item.status.includes('Finans')).length;
 
   return [
-    { id: 'queue', label: 'Bekleyen İnceleme', value: String(evaluationItems.length), note: 'Teknik rapor sürecinde' },
-    { id: 'completed', label: 'Tamamlanan', value: String(completedItems.length), note: 'İmha planı oluşturuldu' },
+    {
+      id: 'queue',
+      label: 'Bekleyen İnceleme',
+      value: String(evaluationItems.value.length),
+      note: 'Teknik rapor sürecinde'
+    },
+    {
+      id: 'completed',
+      label: 'Tamamlanan',
+      value: String(completedItems.value.length),
+      note: 'İmha planı oluşturuldu'
+    },
     { id: 'finance', label: 'Finans Onayı', value: String(financePending), note: 'Bekleyen ödeme kontrolü' }
   ];
 });
 </script>
 
 <style scoped src="@/styles/workspace.css"></style>
+
+<style scoped>
+.empty-state {
+  text-align: center;
+  padding: 1.25rem;
+  color: #475569;
+  font-weight: 500;
+}
+</style>

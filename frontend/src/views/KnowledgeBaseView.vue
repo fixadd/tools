@@ -87,28 +87,6 @@
       </article>
     </div>
 
-    <article class="workflow-card">
-      <h2>Bilgi Paylaşım Döngüsü</h2>
-      <p>
-        Talep modülünde açılan her kayıt ilgili bilgi bankası dokümanına bağlanır ve ekip üyelerine
-        bildirilir. Güncellenen içerikler <RouterLink :to="{ name: 'records' }">Kayıtlar</RouterLink>
-        modülünde denetlenir.
-      </p>
-      <ol class="workflow-steps">
-        <li>
-          Yeni doküman taslağı <RouterLink :to="{ name: 'request-tracking' }">Talep Takip</RouterLink>
-          üzerinden onaya sunulur.
-        </li>
-        <li>
-          Onaylanan içerikler <RouterLink :to="{ name: 'inventory-tracking' }">Envanter</RouterLink> ve
-          <RouterLink :to="{ name: 'stock-tracking' }">Stok</RouterLink> ekranlarında öne çıkarılır.
-        </li>
-        <li>
-          Geri bildirimler <RouterLink :to="{ name: 'admin-panel' }">Admin Paneli</RouterLink> aracılığıyla
-          toplanır ve versiyonlama tamamlanır.
-        </li>
-      </ol>
-    </article>
   </section>
 </template>
 
