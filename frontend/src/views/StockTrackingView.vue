@@ -1,279 +1,805 @@
 <template>
-  <section class="workspace-page" aria-labelledby="stock-title">
-    <article class="workspace-hero">
-      <header class="hero-header">
-        <div class="hero-heading">
-          <span class="hero-badge">Depo Merkezi</span>
-          <h1 id="stock-title">Stok Takip</h1>
-          <p class="hero-intro">
-            Talep modülünden gelen cihaz, lisans ve yazıcı ihtiyaçları bu depoda bekler. Onaylanan
-            hareketleri ilgili modüllere aktarın, kullanılmayan varlıkları geri alarak stok dengesini
-            yönetin.
+  <section class="stock-page" aria-labelledby="stock-title">
+    <aside class="module-nav" aria-label="Modüller">
+      <p class="nav-title">Modüller</p>
+      <RouterLink
+        v-for="link in navigation"
+        :key="link.label"
+        :to="link.to"
+        class="nav-link"
+        :class="{ active: link.routeName === 'stock-tracking' }"
+      >
+        {{ link.label }}
+      </RouterLink>
+    </aside>
+
+    <div class="stock-content">
+      <header class="stock-header">
+        <div>
+          <nav class="breadcrumb" aria-label="Breadcrumb">
+            <RouterLink :to="{ name: 'home' }">Ana Sayfa</RouterLink>
+            <span aria-hidden="true">/</span>
+            <span>Stok Takip</span>
+          </nav>
+          <h1 id="stock-title">Stok Yönetimi</h1>
+          <p class="header-description">
+            Donanım, yazıcı ve lisans stok hareketlerini ilgili modüllere yönlendirerek kayıt akışını
+            yönetin. Talep ve envanter ekipleriyle bağlantılı çalışın.
           </p>
         </div>
-        <div class="hero-actions">
-          <RouterLink :to="{ name: 'request-tracking' }" class="primary-action">Talep kuyruğunu aç</RouterLink>
-          <RouterLink :to="{ name: 'inventory-tracking' }" class="secondary-link">Envanter aktarımını takip et</RouterLink>
+        <div class="header-actions">
+          <RouterLink :to="{ name: 'records' }" class="secondary-action">Arıza Durumu</RouterLink>
+          <RouterLink :to="{ name: 'inventory-tracking' }" class="primary-action">Anlık Durum</RouterLink>
         </div>
       </header>
-      <dl class="hero-metrics">
-        <div v-for="metric in heroMetrics" :key="metric.id">
-          <dt>{{ metric.label }}</dt>
-          <dd>{{ metric.value }}</dd>
-          <p class="metric-note">{{ metric.note }}</p>
+
+      <section class="toolbar">
+        <div class="status-cards">
+          <article v-for="stat in heroStats" :key="stat.id" class="status-card">
+            <p class="status-label">{{ stat.label }}</p>
+            <p class="status-value">{{ stat.value }}</p>
+            <p class="status-note">{{ stat.note }}</p>
+          </article>
         </div>
-      </dl>
-    </article>
+        <div class="search-box">
+          <input
+            v-model="searchTerm"
+            type="search"
+            placeholder="Ara"
+            aria-label="Stokta ara"
+          />
+        </div>
+      </section>
 
-    <div class="workspace-grid columns-2">
-      <article class="workspace-card table-card" aria-labelledby="stock-overview">
-        <header>
-          <h2 id="stock-overview">Bekleyen Varlıklar</h2>
-          <p>Talep kuyruğundan gelen kalemlerin stoktaki son durumunu görüntüleyin.</p>
-        </header>
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Kalem</th>
-              <th scope="col">Kaynak</th>
-              <th scope="col">Hedef Modül</th>
-              <th scope="col">Durum</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in stockItems" :key="item.id">
-              <td>
-                <span class="summary-title">{{ item.name }}</span>
-                <p class="summary-meta">{{ item.code }}</p>
-              </td>
-              <td>{{ item.requestOrigin }}</td>
-              <td>
-                <RouterLink :to="item.targetRoute" class="table-link">{{ item.target }}</RouterLink>
-              </td>
-              <td>
-                <span class="status-chip" :style="{ background: item.statusColor.background, color: item.statusColor.text }">
-                  {{ statusLabels[item.status] }}
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </article>
-
-      <article class="workspace-card" aria-labelledby="stock-flow">
-        <header>
-          <h2 id="stock-flow">Akış Şeması</h2>
-          <p>Stoktaki kalemlerin hangi modüllere aktarıldığını takip edin.</p>
-        </header>
-        <ol class="workflow-steps">
-          <li>Talep Takip modülünden gelen ihtiyaçlar stokta doğrulama için sıralanır.</li>
-          <li>
-            Hazır olan varlıklar <RouterLink :to="{ name: 'inventory-tracking' }">Envanter</RouterLink>,
-            <RouterLink :to="{ name: 'license-tracking' }">Lisans</RouterLink> ve
-            <RouterLink :to="{ name: 'printer-tracking' }">Yazıcı</RouterLink> modüllerine aktarılır.
-          </li>
-          <li>İade edilen veya boşa çıkan ürünler kontrol sonrası tekrar stok kaydına alınır.</li>
-        </ol>
-        <div class="quick-actions">
-          <RouterLink v-for="link in relatedLinks" :key="link.title" :to="link.to">
-            {{ link.title }} <span aria-hidden="true">→</span>
+      <section class="stock-panel" aria-labelledby="tab-stock">
+        <header class="panel-header">
+          <div class="panel-tabs" role="tablist">
+            <button
+              v-for="tab in tabs"
+              :key="tab.id"
+              :id="`tab-${tab.id}`"
+              role="tab"
+              type="button"
+              :aria-controls="`panel-${tab.id}`"
+              :aria-selected="activeTab === tab.id"
+              :class="['panel-tab', { active: activeTab === tab.id }]"
+              @click="activeTab = tab.id"
+            >
+              {{ tab.label }}
+            </button>
+          </div>
+          <RouterLink :to="{ name: 'request-tracking' }" class="link-button">
+            Talep kuyruğunu aç
           </RouterLink>
-        </div>
-        <footer>
-          <RouterLink :to="{ name: 'scrap-management' }" class="card-link">Hurdaya ayrılan kalemleri incele</RouterLink>
-        </footer>
-      </article>
-
-      <article class="workspace-card" aria-labelledby="stock-log">
-        <header>
-          <h2 id="stock-log">Giriş / Çıkış Logu</h2>
-          <p>Depodaki hareketler ve bağlantılı kayıtlar.</p>
         </header>
-        <ul class="timeline">
-          <li v-for="entry in movementLog" :key="entry.id" class="timeline-entry">
-            <span class="timeline-dot" aria-hidden="true"></span>
-            <div class="timeline-content">
-              <p class="timeline-title">{{ entry.text }}</p>
-              <p class="timeline-meta">{{ entry.time }}</p>
-              <RouterLink
-                v-if="entry.relatedRoute"
-                :to="entry.relatedRoute"
-                class="timeline-link"
-              >
+
+        <div
+          v-if="activeTab === 'stock'"
+          :id="'panel-stock'"
+          role="tabpanel"
+          :aria-labelledby="'tab-stock'"
+          class="tab-content"
+        >
+          <div class="segment-filters" role="group" aria-label="Stok segmentleri">
+            <button
+              v-for="segment in segments"
+              :key="segment.id"
+              type="button"
+              :class="['segment-button', { active: activeSegment === segment.id }]"
+              @click="activeSegment = segment.id"
+            >
+              {{ segment.label }}
+            </button>
+            <button type="button" class="segment-button outlined" @click="resetFilters">
+              Seçilenleri Sıfırla
+            </button>
+          </div>
+
+          <table class="stock-table">
+            <thead>
+              <tr>
+                <th scope="col">IFS No</th>
+                <th scope="col">Donanım Tipi</th>
+                <th scope="col">Marka</th>
+                <th scope="col">Model</th>
+                <th scope="col">Miktar</th>
+                <th scope="col">Tarih</th>
+                <th scope="col">Açıklama</th>
+                <th scope="col">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in filteredStock" :key="item.id">
+                <td data-title="IFS No">{{ item.ifsNo }}</td>
+                <td data-title="Donanım Tipi">{{ item.type }}</td>
+                <td data-title="Marka">{{ item.brand }}</td>
+                <td data-title="Model">{{ item.model }}</td>
+                <td data-title="Miktar">{{ item.quantity }}</td>
+                <td data-title="Tarih">{{ item.date }}</td>
+                <td data-title="Açıklama">
+                  <span>{{ item.description }}</span>
+                  <small v-if="item.cancelReason" class="cancel-reason">
+                    İptal Notu: {{ item.cancelReason }}
+                  </small>
+                </td>
+                <td data-title="İşlemler" class="actions">
+                  <button type="button" class="stock-action" @click="handleStockIn(item)">
+                    Stok Gir
+                  </button>
+                  <button type="button" class="cancel-action" @click="handleCancel(item)">
+                    İptal
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="!filteredStock.length">
+                <td colspan="8" class="empty">Stok bulunamadı</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div
+          v-else
+          :id="'panel-log'"
+          role="tabpanel"
+          :aria-labelledby="'tab-log'"
+          class="tab-content"
+        >
+          <ul class="log-list">
+            <li v-for="entry in movementLog" :key="entry.id" class="log-entry">
+              <div>
+                <p class="log-title">{{ entry.title }}</p>
+                <p class="log-meta">{{ entry.time }}</p>
+              </div>
+              <RouterLink v-if="entry.route" :to="entry.route" class="log-link">
                 Kaydı aç
               </RouterLink>
-            </div>
-          </li>
-        </ul>
-      </article>
+            </li>
+          </ul>
+        </div>
+      </section>
     </div>
-
-    <article class="workflow-card">
-      <h2>Depo Senkronizasyonu</h2>
-      <p>
-        Stok hareketleri talep ve envanter modülleriyle eş zamanlı çalışır. Her işlem
-        <RouterLink :to="{ name: 'records' }">Kayıtlar</RouterLink> paneline aktarılır ve
-        <RouterLink :to="{ name: 'profile' }">profil</RouterLink> yetkilerine göre bildirimler gönderilir.
-      </p>
-      <ol class="workflow-steps">
-        <li>Yeni girişler için stok doğrulaması yapılır ve onay bekleyen taleplere bağlanır.</li>
-        <li>Çıkış yapılan ürünler envanter kartlarıyla eşleştirilir ve ilgili ekip bilgilendirilir.</li>
-        <li>İadeler ve hurdalar ayrı kuyruğa alınarak sürecin sonunda raporlanır.</li>
-      </ol>
-    </article>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { RouterLink, type RouteLocationRaw } from 'vue-router';
 
-const statusLabels = {
-  awaiting: 'Talep Kontrolü',
-  prepared: 'Çıkışa Hazır',
-  'in-progress': 'Aktarım Yapılıyor',
-  returned: 'İadeden Geldi'
-} as const;
-
-type StockStatus = keyof typeof statusLabels;
-
-interface StatusColor {
-  background: string;
-  text: string;
+interface NavigationLink {
+  label: string;
+  to: RouteLocationRaw;
+  routeName?: string;
 }
 
-interface StockItem {
-  id: number;
-  name: string;
-  code: string;
-  requestOrigin: string;
-  target: string;
-  targetRoute: RouteLocationRaw;
-  status: StockStatus;
-  statusColor: StatusColor;
-}
-
-interface HeroMetric {
+interface HeroStat {
   id: string;
   label: string;
   value: string;
   note: string;
 }
 
-interface RelatedLink {
-  title: string;
-  description: string;
-  to: RouteLocationRaw;
+interface Segment {
+  id: string;
+  label: string;
 }
 
-interface MovementLogEntry {
+interface StockRow {
   id: number;
-  time: string;
-  text: string;
-  relatedRoute?: RouteLocationRaw;
+  ifsNo: string;
+  type: string;
+  brand: string;
+  model: string;
+  quantity: string;
+  date: string;
+  description: string;
+  category: Segment['id'];
+  cancelReason?: string;
 }
 
-const statusColors: Record<StockStatus, StatusColor> = {
-  awaiting: { background: 'rgba(234, 179, 8, 0.15)', text: '#92400e' },
-  prepared: { background: 'rgba(34, 197, 94, 0.18)', text: '#166534' },
-  'in-progress': { background: 'rgba(59, 130, 246, 0.18)', text: '#1d4ed8' },
-  returned: { background: 'rgba(99, 102, 241, 0.18)', text: '#3730a3' }
-};
+interface MovementEntry {
+  id: number;
+  title: string;
+  time: string;
+  route?: RouteLocationRaw;
+}
 
-const stockItems: StockItem[] = [
+const navigation: NavigationLink[] = [
+  { label: 'Ana Sayfa', to: { name: 'home' }, routeName: 'home' },
+  { label: 'Envanter Takip', to: { name: 'inventory-tracking' }, routeName: 'inventory-tracking' },
+  { label: 'Talep Takip', to: { name: 'request-tracking' }, routeName: 'request-tracking' },
+  { label: 'Lisans Takip', to: { name: 'license-tracking' }, routeName: 'license-tracking' },
+  { label: 'Yazıcı Takip', to: { name: 'printer-tracking' }, routeName: 'printer-tracking' },
+  { label: 'Hurda', to: { name: 'scrap-management' }, routeName: 'scrap-management' },
+  { label: 'Kayıtlar', to: { name: 'records' }, routeName: 'records' }
+];
+
+const heroStats: HeroStat[] = [
+  { id: 'incoming', label: 'Bekleyen Giriş', value: '14', note: 'Talep kuyruğundan doğrulanmayı bekliyor' },
+  { id: 'prepared', label: 'Çıkışa Hazır', value: '7', note: 'Envanter aktarımına hazır kalem' },
+  { id: 'returned', label: 'İadeden Gelen', value: '3', note: 'Kontrolden sonra stokta tutulanlar' }
+];
+
+const tabs = [
+  { id: 'stock', label: 'Stok Durumu' },
+  { id: 'log', label: 'Log' }
+] as const;
+
+const segments: Segment[] = [
+  { id: 'all', label: 'Tümü' },
+  { id: 'envanter', label: 'Envanter' },
+  { id: 'yazici', label: 'Yazıcı' },
+  { id: 'lisans', label: 'Lisanslar' },
+  { id: 'sistem', label: 'Sistem Odası' }
+];
+
+const searchTerm = ref('');
+const activeTab = ref<typeof tabs[number]['id']>('stock');
+const activeSegment = ref<Segment['id']>('all');
+
+const stockRows = ref<StockRow[]>([
   {
     id: 1,
-    name: 'Dell Latitude 7440',
-    code: 'NB-1051',
-    requestOrigin: 'Talep #458 / İnsan Kaynakları',
-    target: 'Envanter Takip',
-    targetRoute: { name: 'inventory-tracking' },
-    status: 'awaiting',
-    statusColor: statusColors.awaiting
+    ifsNo: 'IFS-48765',
+    type: 'Laptop',
+    brand: 'Lenovo',
+    model: 'ThinkPad T14',
+    quantity: '5',
+    date: '08.04.2024',
+    description: 'Yeni ekip ataması için beklemede',
+    category: 'envanter'
   },
   {
     id: 2,
-    name: 'Microsoft Visio Professional',
-    code: 'LIC-212',
-    requestOrigin: 'Talep #461 / Proje Yönetimi',
-    target: 'Lisans Takip',
-    targetRoute: { name: 'license-tracking' },
-    status: 'prepared',
-    statusColor: statusColors.prepared
+    ifsNo: 'IFS-48801',
+    type: 'Lisans',
+    brand: 'Microsoft',
+    model: 'Office 365 E5',
+    quantity: '12',
+    date: '07.04.2024',
+    description: 'Güvenlik ekibine tahsis edilecek',
+    category: 'lisans'
   },
   {
     id: 3,
-    name: 'HP LaserJet Pro M428 Toner',
-    code: 'STK-TON-98',
-    requestOrigin: 'Talep #452 / Satış',
-    target: 'Yazıcı Takip',
-    targetRoute: { name: 'printer-tracking' },
-    status: 'in-progress',
-    statusColor: statusColors['in-progress']
+    ifsNo: 'IFS-48842',
+    type: 'Yazıcı',
+    brand: 'HP',
+    model: 'LaserJet Pro M404dn',
+    quantity: '2',
+    date: '05.04.2024',
+    description: 'Bölge ofisinden iade edildi',
+    category: 'yazici'
   },
   {
     id: 4,
-    name: 'Dell Latitude 5410',
-    code: 'NB-0992',
-    requestOrigin: 'İade / Finans Departmanı',
-    target: 'Envanter Takip',
-    targetRoute: { name: 'inventory-tracking' },
-    status: 'returned',
-    statusColor: statusColors.returned
+    ifsNo: 'IFS-48915',
+    type: 'Sunucu',
+    brand: 'Dell',
+    model: 'PowerEdge R760',
+    quantity: '1',
+    date: '02.04.2024',
+    description: 'Yeni sistem odası kurulumu',
+    category: 'sistem'
   }
-];
+]);
 
-const heroMetrics = computed<HeroMetric[]>(() => {
-  const awaiting = stockItems.filter((item) => item.status === 'awaiting').length;
-  const ready = stockItems.filter((item) => item.status === 'prepared').length;
-  const transfers = stockItems.filter((item) => item.status === 'in-progress').length;
+const movementLog = computed<MovementEntry[]>(() => [
+  {
+    id: 1,
+    title: 'IFS-48765 stok girişi onaylandı, envantere aktarıldı.',
+    time: '08.04.2024 11:32',
+    route: { name: 'inventory-tracking' }
+  },
+  {
+    id: 2,
+    title: 'IFS-48801 lisans kaydı bilgi işlem tarafından talep edildi.',
+    time: '07.04.2024 09:15',
+    route: { name: 'license-tracking' }
+  },
+  {
+    id: 3,
+    title: 'IFS-48842 yazıcı kontrol sonrası stokta tutuluyor.',
+    time: '06.04.2024 16:54',
+    route: { name: 'printer-tracking' }
+  },
+  {
+    id: 4,
+    title: 'IFS-48915 sistem odası kurulum kaydı açıldı.',
+    time: '02.04.2024 14:28',
+    route: { name: 'records' }
+  }
+]);
 
-  return [
-    { id: 'total', label: 'Toplam Kalem', value: String(stockItems.length), note: 'Stoktaki aktif kayıt' },
-    { id: 'awaiting', label: 'Kontrol Bekleyen', value: String(awaiting), note: 'Talep kontrol sürecinde' },
-    { id: 'prepared', label: 'Çıkışa Hazır', value: String(ready), note: 'Teslimata hazır kalem' },
-    { id: 'transfer', label: 'Aktarımda', value: String(transfers), note: 'Modüllere yönlendiriliyor' }
-  ];
+const filteredStock = computed(() => {
+  const query = searchTerm.value.trim().toLowerCase();
+
+  return stockRows.value.filter((row) => {
+    const matchesSegment =
+      activeSegment.value === 'all' ? true : row.category === activeSegment.value;
+
+    const matchesQuery =
+      !query ||
+      [row.ifsNo, row.type, row.brand, row.model, row.description]
+        .join(' ')
+        .toLowerCase()
+        .includes(query);
+
+    return matchesSegment && matchesQuery;
+  });
 });
 
-const relatedLinks: RelatedLink[] = [
-  {
-    title: 'Talep Takip',
-    description: 'Gelen talepleri doğrulayıp stok girişine alın.',
-    to: { name: 'request-tracking' }
-  },
-  {
-    title: 'Kayıtlar',
-    description: 'Geçmiş giriş/çıkış raporlarına göz atın.',
-    to: { name: 'records' }
-  }
-];
+function handleStockIn(row: StockRow) {
+  row.cancelReason = undefined;
+  row.description = 'Envantere aktarıldı, zimmet bekleniyor';
+}
 
-const movementLog: MovementLogEntry[] = [
-  {
-    id: 1,
-    time: 'Bugün 14:20',
-    text: 'NB-1051 cihazı depoya giriş yaptı, envanter onayı bekliyor.',
-    relatedRoute: { name: 'inventory-tracking' }
-  },
-  {
-    id: 2,
-    time: 'Bugün 09:55',
-    text: 'LIC-212 lisansı envanterdeki NB-2004 cihazına atandı ve stoktan düşüldü.',
-    relatedRoute: { name: 'license-tracking' }
-  },
-  {
-    id: 3,
-    time: 'Dün 18:10',
-    text: 'STK-TON-98 kalemi yazıcı modülüne aktarıldı, talep #452 kapatıldı.',
-    relatedRoute: { name: 'printer-tracking' }
-  },
-  {
-    id: 4,
-    time: 'Dün 11:32',
-    text: 'NB-0992 cihazı Finans departmanından iade alındı ve stokta tekrar listelendi.'
+function handleCancel(row: StockRow) {
+  const reason = window.prompt('İptal sebebini girin');
+  if (!reason) {
+    return;
   }
-];
+
+  row.cancelReason = reason;
+  row.description = 'Talep kapatıldı, depoda bekliyor';
+}
+
+function resetFilters() {
+  activeSegment.value = 'all';
+  searchTerm.value = '';
+}
 </script>
 
-<style scoped src="@/styles/workspace.css"></style>
+<style scoped>
+.stock-page {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 2rem;
+  background: linear-gradient(180deg, #f1f5ff 0%, #ffffff 38%);
+  min-height: 100vh;
+  padding: 2.5rem 2rem;
+  box-sizing: border-box;
+}
+
+.module-nav {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 16px;
+  padding: 1.5rem 1.25rem;
+  box-shadow: 0 20px 45px rgba(59, 130, 246, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  position: sticky;
+  top: 2rem;
+  height: fit-content;
+}
+
+.nav-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.55rem 0.75rem;
+  border-radius: 10px;
+  color: #1f2937;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.nav-link:hover {
+  background: rgba(59, 130, 246, 0.12);
+  color: #1d4ed8;
+}
+
+.nav-link.active {
+  background: #1d4ed8;
+  color: #ffffff;
+  box-shadow: 0 12px 24px rgba(29, 78, 216, 0.18);
+}
+
+.stock-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.stock-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 18px;
+  padding: 2rem;
+  box-shadow: 0 18px 40px rgba(59, 130, 246, 0.08);
+  position: relative;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #475569;
+  margin-bottom: 0.75rem;
+}
+
+.breadcrumb a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.breadcrumb a:hover {
+  color: #1d4ed8;
+}
+
+#stock-title {
+  font-size: 2rem;
+  color: #1e3a8a;
+  margin: 0 0 0.5rem;
+}
+
+.header-description {
+  max-width: 540px;
+  color: #475569;
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.primary-action,
+.secondary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.55rem 1.1rem;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.primary-action {
+  background: linear-gradient(135deg, #fbbf24, #f97316);
+  color: #0f172a;
+}
+
+.secondary-action {
+  background: rgba(248, 113, 113, 0.18);
+  color: #b91c1c;
+}
+
+.primary-action:hover,
+.secondary-action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+}
+
+.toolbar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.status-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+}
+
+.status-card {
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 16px;
+  padding: 1.25rem;
+  box-shadow: 0 16px 32px rgba(148, 163, 184, 0.16);
+}
+
+.status-label {
+  font-size: 0.9rem;
+  color: #475569;
+  margin-bottom: 0.35rem;
+}
+
+.status-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1e3a8a;
+  margin: 0;
+}
+
+.status-note {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 0.35rem;
+}
+
+.search-box input {
+  width: 220px;
+  border: none;
+  border-radius: 999px;
+  padding: 0.65rem 1.15rem;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.4);
+  font-size: 0.95rem;
+  color: #1f2937;
+}
+
+.search-box input:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 2px rgba(37, 99, 235, 0.65);
+}
+
+.stock-panel {
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 18px;
+  box-shadow: 0 24px 48px rgba(59, 130, 246, 0.12);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.panel-tabs {
+  display: inline-flex;
+  gap: 0.75rem;
+  background: rgba(226, 232, 240, 0.5);
+  padding: 0.4rem;
+  border-radius: 999px;
+}
+
+.panel-tab {
+  border: none;
+  background: transparent;
+  font-weight: 600;
+  color: #475569;
+  padding: 0.45rem 1.4rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.panel-tab.active {
+  background: #1d4ed8;
+  color: #ffffff;
+  box-shadow: 0 12px 24px rgba(29, 78, 216, 0.18);
+}
+
+.link-button {
+  color: #1d4ed8;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.segment-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.segment-button {
+  border: none;
+  background: rgba(226, 232, 240, 0.6);
+  color: #1e293b;
+  font-weight: 500;
+  padding: 0.5rem 1.1rem;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.segment-button.active {
+  background: #38bdf8;
+  color: #0f172a;
+  box-shadow: 0 12px 24px rgba(56, 189, 248, 0.2);
+}
+
+.segment-button:hover {
+  transform: translateY(-1px);
+}
+
+.segment-button.outlined {
+  background: transparent;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  color: #475569;
+}
+
+.stock-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.6);
+}
+
+.stock-table thead {
+  background: rgba(59, 130, 246, 0.08);
+  color: #1e3a8a;
+}
+
+.stock-table th,
+.stock-table td {
+  padding: 0.85rem 1rem;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.stock-table tbody tr:nth-child(even) {
+  background: rgba(248, 250, 252, 0.6);
+}
+
+.stock-table tbody tr:hover {
+  background: rgba(224, 242, 254, 0.65);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.stock-action,
+.cancel-action {
+  border: none;
+  border-radius: 999px;
+  padding: 0.45rem 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stock-action {
+  background: linear-gradient(135deg, #34d399, #10b981);
+  color: #022c22;
+}
+
+.cancel-action {
+  background: rgba(252, 165, 165, 0.25);
+  color: #b91c1c;
+}
+
+.stock-action:hover,
+.cancel-action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
+}
+
+.empty {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: #94a3b8;
+}
+
+.cancel-reason {
+  display: block;
+  margin-top: 0.35rem;
+  color: #b91c1c;
+  font-size: 0.8rem;
+}
+
+.log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.log-entry {
+  background: rgba(248, 250, 252, 0.8);
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.6);
+}
+
+.log-title {
+  font-weight: 600;
+  margin: 0 0 0.35rem;
+  color: #0f172a;
+}
+
+.log-meta {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.log-link {
+  color: #1d4ed8;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+@media (max-width: 1100px) {
+  .stock-page {
+    grid-template-columns: 1fr;
+    padding: 1.5rem;
+  }
+
+  .module-nav {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .nav-title {
+    width: 100%;
+  }
+
+  .stock-header {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .search-box {
+    justify-self: flex-start;
+  }
+}
+
+@media (max-width: 768px) {
+  .header-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .stock-table,
+  .stock-table thead,
+  .stock-table tbody,
+  .stock-table th,
+  .stock-table td,
+  .stock-table tr {
+    display: block;
+  }
+
+  .stock-table thead {
+    display: none;
+  }
+
+  .stock-table tbody tr {
+    padding: 1rem;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+  }
+
+  .stock-table td {
+    padding: 0.4rem 0;
+  }
+
+  .stock-table td::before {
+    content: attr(data-title);
+    font-weight: 600;
+    display: block;
+    margin-bottom: 0.25rem;
+    color: #1d4ed8;
+  }
+
+  .actions {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+</style>

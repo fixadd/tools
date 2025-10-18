@@ -1,247 +1,299 @@
 <template>
-  <section class="admin-page" aria-labelledby="admin-panel-title">
-    <div class="panel-card">
-      <header class="panel-header">
-        <div class="panel-heading">
-          <span class="panel-badge">Yönetim Modülü</span>
-          <h1 id="admin-panel-title">Admin Paneli</h1>
-          <p class="panel-intro">
-            Rolleri, ürün modüllerini ve entegrasyon bağlantılarını tek noktadan yönetin. Tüm
-            güncellemeler ilgili modüllere otomatik olarak aktarılır.
+  <section class="admin-layout" aria-labelledby="admin-panel-heading">
+    <aside class="side-nav" aria-label="Uygulama menüsü">
+      <div v-for="group in navGroups" :key="group.title" class="nav-group">
+        <p class="nav-title">{{ group.title }}</p>
+        <RouterLink
+          v-for="item in group.items"
+          :key="item.route"
+          :to="{ name: item.route }"
+          class="nav-link"
+          :class="{ active: item.route === 'admin-panel' }"
+        >
+          <span class="nav-icon" aria-hidden="true">{{ item.icon }}</span>
+          <span>{{ item.label }}</span>
+        </RouterLink>
+      </div>
+    </aside>
+
+    <main class="panel-area">
+      <header class="page-hero">
+        <div class="hero-copy">
+          <span class="hero-badge">Ayarlar</span>
+          <h1 id="admin-panel-heading">Admin Paneli</h1>
+          <p>
+            Kullanıcı yetkilerini, ürün kataloglarını ve LDAP bağlantılarını tek merkezden yöneterek
+            tüm modüllere eş zamanlı güncellemeler aktarın.
           </p>
         </div>
-        <div class="panel-actions">
-          <RouterLink :to="primaryActionRoute" class="primary-action">
-            {{ primaryActionLabel }}
-          </RouterLink>
-          <label class="search-field" :class="{ disabled: isSearchDisabled }">
-            <span class="search-icon" aria-hidden="true">🔍</span>
-            <input
-              v-model="searchQuery"
-              type="search"
-              :disabled="isSearchDisabled"
-              :aria-disabled="isSearchDisabled"
-              placeholder="Kullanıcı veya ekip ara"
-              aria-label="Kullanıcı arama"
-              :aria-controls="isSearchDisabled ? undefined : 'users-table'"
-            />
-          </label>
+        <div class="hero-stat">
+          <p class="stat-label">Aktif Kullanıcı</p>
+          <p class="stat-value">{{ activeUserCount }}</p>
+          <RouterLink :to="{ name: 'profile' }" class="stat-link">Profil detayına git</RouterLink>
         </div>
       </header>
 
-      <nav class="panel-tabs" aria-label="Panel içerikleri">
-        <button
-          v-for="tab in tabItems"
-          :key="tab.id"
-          type="button"
-          class="panel-tab"
-          :class="{ active: activeTab === tab.id }"
-          @click="activeTab = tab.id"
-        >
-          <span class="tab-icon" aria-hidden="true">{{ tab.icon }}</span>
-          <span class="tab-text">
-            <span class="tab-label">{{ tab.label }}</span>
-            <span class="tab-caption">{{ tab.caption }}</span>
-          </span>
-        </button>
-      </nav>
+      <section class="panel-card" :aria-labelledby="`tab-${activeTab}`">
+        <header class="panel-header">
+          <nav class="tab-list" aria-label="Panel sekmeleri">
+            <button
+              v-for="tab in tabItems"
+              :key="tab.id"
+              type="button"
+              class="tab-button"
+              :class="{ active: activeTab === tab.id }"
+              @click="activeTab = tab.id"
+            >
+              <span>{{ tab.label }}</span>
+              <span class="tab-caption">{{ tab.caption }}</span>
+            </button>
+          </nav>
+          <div class="panel-toolbar">
+            <label class="search-field" :class="{ disabled: isSearchDisabled }">
+              <span class="search-icon" aria-hidden="true">🔍</span>
+              <input
+                v-model="searchQuery"
+                type="search"
+                :disabled="isSearchDisabled"
+                :aria-disabled="isSearchDisabled"
+                placeholder="Ara..."
+                aria-label="Kullanıcı ara"
+              />
+            </label>
+            <button type="button" class="toolbar-button" @click="handleToolbarAction">
+              {{ toolbarButtonLabel }}
+            </button>
+          </div>
+        </header>
 
-      <div class="panel-body">
-        <div v-if="activeTab === 'users'" class="tab-panel users-panel">
-          <table id="users-table" class="admin-table">
-            <thead>
-              <tr>
-                <th scope="col">Ad</th>
-                <th scope="col">Departman</th>
-                <th scope="col">E-posta</th>
-                <th scope="col">Son Giriş</th>
-                <th scope="col">Modül</th>
-              </tr>
-            </thead>
-            <tbody v-if="filteredUsers.length">
-              <tr v-for="user in filteredUsers" :key="user.id">
-                <td>
-                  <span class="user-name">{{ user.name }}</span>
-                </td>
-                <td>{{ user.department }}</td>
-                <td>{{ user.email }}</td>
-                <td>{{ user.lastLogin }}</td>
-                <td>
-                  <RouterLink :to="{ name: user.routeName }" class="table-link">
-                    {{ user.module }}
-                  </RouterLink>
-                </td>
-              </tr>
-            </tbody>
-            <tbody v-else>
-              <tr>
-                <td colspan="5" class="empty-row">Henüz kullanıcı kaydı bulunmuyor.</td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="panel-body">
+          <div v-if="activeTab === 'users'" class="users-tab" role="region" aria-live="polite">
+            <header class="tab-copy">
+              <h2 id="tab-users">Kullanıcı Yönetimi</h2>
+              <p>Rolleri, ekip atamalarını ve modül izinlerini güncelleyin.</p>
+            </header>
+            <div class="table-wrapper">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th scope="col">No</th>
+                    <th scope="col">Kullanıcı Adı</th>
+                    <th scope="col">Ad Soyad</th>
+                    <th scope="col">E-posta</th>
+                    <th scope="col">Rol</th>
+                    <th scope="col" class="actions">İşlemler</th>
+                  </tr>
+                </thead>
+                <tbody v-if="filteredUsers.length">
+                  <tr v-for="user in filteredUsers" :key="user.id">
+                    <td data-title="No">{{ user.order }}</td>
+                    <td data-title="Kullanıcı Adı">{{ user.username }}</td>
+                    <td data-title="Ad Soyad">{{ user.fullName }}</td>
+                    <td data-title="E-posta">{{ user.email }}</td>
+                    <td data-title="Rol">{{ user.role }}</td>
+                    <td data-title="İşlemler" class="actions">
+                      <button type="button" class="link-button" @click="goToProfile(user.routeName)">
+                        Düzenle
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+                <tbody v-else>
+                  <tr>
+                    <td colspan="6" class="empty-state">Kayıt bulunamadı.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div v-else-if="activeTab === 'product'" class="product-tab" role="region">
+            <header class="tab-copy">
+              <h2 id="tab-product">Ürün / Envanter Ekle</h2>
+              <p>Yeni lisans ya da donanım girişlerini ilgili alanlarla kaydedin.</p>
+            </header>
+            <form class="product-form" @submit.prevent="handleToolbarAction">
+              <div v-for="field in productFields" :key="field.id" class="form-field">
+                <label :for="field.id">{{ field.label }}</label>
+                <input :id="field.id" :placeholder="field.placeholder" type="text" />
+              </div>
+            </form>
+          </div>
+
+          <div v-else class="connections-tab" role="region">
+            <header class="tab-copy">
+              <h2 id="tab-connections">LDAP Bağlantıları</h2>
+              <p>Sunucu bağlantılarını gözlemleyin ve yapılandırmaları yönetin.</p>
+            </header>
+            <div class="table-wrapper">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Ad</th>
+                    <th scope="col">Sunucu</th>
+                    <th scope="col">Port</th>
+                    <th scope="col">Base DN</th>
+                    <th scope="col">Kullanıcı</th>
+                    <th scope="col" class="actions">İşlemler</th>
+                  </tr>
+                </thead>
+                <tbody v-if="integrationRows.length">
+                  <tr v-for="integration in integrationRows" :key="integration.id">
+                    <td data-title="Ad">{{ integration.name }}</td>
+                    <td data-title="Sunucu">{{ integration.server }}</td>
+                    <td data-title="Port">{{ integration.port }}</td>
+                    <td data-title="Base DN">{{ integration.baseDn }}</td>
+                    <td data-title="Kullanıcı">{{ integration.username }}</td>
+                    <td data-title="İşlemler" class="actions">
+                      <button type="button" class="link-button" @click="configureIntegration(integration)">
+                        Ayarla
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+                <tbody v-else>
+                  <tr>
+                    <td colspan="6" class="empty-state">Kayıt yok.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-
-        <div v-else-if="activeTab === 'modules'" class="tab-panel modules-panel">
-          <template v-if="moduleCards.length">
-            <ul class="module-grid" role="list">
-              <li v-for="module in moduleCards" :key="module.id" class="module-card" role="listitem">
-                <div class="module-icon" aria-hidden="true">{{ module.icon }}</div>
-                <div class="module-text">
-                  <p class="module-label">{{ module.title }}</p>
-                  <p class="module-meta">{{ module.module }} • {{ module.count }} kayıt</p>
-                  <p class="module-note">{{ module.description }}</p>
-                </div>
-                <RouterLink :to="{ name: module.routeName }" class="module-link">
-                  {{ module.linkLabel }}
-                </RouterLink>
-              </li>
-            </ul>
-          </template>
-          <p v-else class="empty-state">Henüz modül bilgisi eklenmemiş.</p>
-        </div>
-
-        <div v-else class="tab-panel integrations-panel">
-          <template v-if="integrationCards.length">
-            <ul class="integration-grid" role="list">
-              <li
-                v-for="integration in integrationCards"
-                :key="integration.id"
-                class="integration-card"
-                role="listitem"
-              >
-                <div class="integration-icon" aria-hidden="true">{{ integration.icon }}</div>
-                <div class="integration-text">
-                  <p class="integration-label">{{ integration.title }}</p>
-                  <p class="integration-status">{{ integration.status }}</p>
-                  <p class="integration-note">{{ integration.note }}</p>
-                </div>
-                <RouterLink :to="{ name: integration.routeName }" class="integration-link">
-                  {{ integration.linkLabel }}
-                </RouterLink>
-              </li>
-            </ul>
-          </template>
-          <p v-else class="empty-state">Henüz entegrasyon bağlantısı eklenmemiş.</p>
-        </div>
-      </div>
-    </div>
-
-    <article class="workflow-card">
-      <header>
-        <h2>Yönetim Döngüsü</h2>
-        <p>
-          Modüller arası entegrasyonlar otomatik aktarılır. Güncellemeler anlık olarak tüm ekiplere
-          yansır.
-        </p>
-      </header>
-      <ol class="workflow-steps">
-        <li>
-          Rol atamaları tamamlandığında detaylar
-          <RouterLink :to="{ name: 'profile' }">Profil</RouterLink> ekranında görüntülenir ve
-          ilgili bildirimler gönderilir.
-        </li>
-        <li>
-          Ürün kataloglarında yapılan değişiklikler
-          <RouterLink :to="{ name: 'request-tracking' }">Talep Takip</RouterLink> ve
-          <RouterLink :to="{ name: 'inventory-tracking' }">Envanter Takip</RouterLink>
-          formlarına otomatik olarak yansır.
-        </li>
-        <li>
-          LDAP ve SSO entegrasyon güncellemeleri anlık olarak
-          <RouterLink :to="{ name: 'records' }">Kayıtlar</RouterLink> modülüne loglanır ve
-          <RouterLink :to="{ name: 'knowledge-base' }">Bilgi Bankası</RouterLink> rehberlerinde
-          yayınlanır.
-        </li>
-      </ol>
-    </article>
+      </section>
+    </main>
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { RouterLink, type RouteLocationRaw } from 'vue-router';
+import { RouterLink, useRouter } from 'vue-router';
 
 type RouteName =
   | 'home'
   | 'inventory-tracking'
-  | 'request-tracking'
-  | 'printer-tracking'
   | 'license-tracking'
-  | 'admin-panel'
-  | 'profile'
+  | 'printer-tracking'
+  | 'stock-tracking'
+  | 'request-tracking'
   | 'knowledge-base'
-  | 'records'
-  | 'scrap-management';
+  | 'scrap-management'
+  | 'profile'
+  | 'admin-panel'
+  | 'records';
 
-type TabId = 'users' | 'modules' | 'integrations';
+type TabId = 'users' | 'product' | 'connections';
 
 interface TabItem {
   id: TabId;
   label: string;
   caption: string;
+}
+
+interface NavItem {
+  label: string;
+  route: RouteName;
   icon: string;
+}
+
+interface NavGroup {
+  title: string;
+  items: NavItem[];
 }
 
 interface UserRow {
   id: string;
-  name: string;
-  department: string;
+  order: number;
+  username: string;
+  fullName: string;
   email: string;
-  lastLogin: string;
-  module: string;
+  role: string;
   routeName: RouteName;
 }
 
-interface ModuleCard {
+interface ProductField {
   id: string;
-  title: string;
-  module: string;
-  count: number;
-  description: string;
-  routeName: RouteName;
-  icon: string;
-  linkLabel: string;
+  label: string;
+  placeholder: string;
 }
 
-interface IntegrationCard {
+interface IntegrationRow {
   id: string;
-  title: string;
-  status: string;
-  note: string;
-  routeName: RouteName;
-  icon: string;
-  linkLabel: string;
+  name: string;
+  server: string;
+  port: string;
+  baseDn: string;
+  username: string;
 }
+
+const router = useRouter();
+
+const navGroups: NavGroup[] = [
+  {
+    title: 'Ana Sayfa',
+    items: [
+      { label: 'Ana Sayfa', route: 'home', icon: '🏠' }
+    ]
+  },
+  {
+    title: 'Envanter',
+    items: [
+      { label: 'Envanter Takip', route: 'inventory-tracking', icon: '📦' },
+      { label: 'Lisans Takip', route: 'license-tracking', icon: '🪪' },
+      { label: 'Yazıcı Takip', route: 'printer-tracking', icon: '🖨️' },
+      { label: 'Stok Takip', route: 'stock-tracking', icon: '📊' }
+    ]
+  },
+  {
+    title: 'İşlemler',
+    items: [
+      { label: 'Talep Takip', route: 'request-tracking', icon: '🗂️' },
+      { label: 'Bilgiler', route: 'knowledge-base', icon: '📘' },
+      { label: 'Hurda', route: 'scrap-management', icon: '♻️' }
+    ]
+  },
+  {
+    title: 'Ayarlar',
+    items: [
+      { label: 'Profil', route: 'profile', icon: '👤' },
+      { label: 'Admin Paneli', route: 'admin-panel', icon: '🛠️' },
+      { label: 'Kayıtlar', route: 'records', icon: '🧾' }
+    ]
+  }
+];
 
 const tabItems: TabItem[] = [
-  {
-    id: 'users',
-    label: 'Kullanıcı Yönetimi',
-    caption: 'Roller ve ekipler',
-    icon: '👥'
-  },
-  {
-    id: 'modules',
-    label: 'Ürün Modülleri',
-    caption: 'Katalog ve stoklar',
-    icon: '🧩'
-  },
-  {
-    id: 'integrations',
-    label: 'Bağlantılar',
-    caption: 'LDAP & API ayarları',
-    icon: '🔗'
-  }
+  { id: 'users', label: 'Kullanıcı', caption: 'Yetkilendirme' },
+  { id: 'product', label: 'Ürün Ekle', caption: 'Envanter' },
+  { id: 'connections', label: 'Bağlantılar', caption: 'LDAP' }
 ];
 
 const activeTab = ref<TabId>('users');
 const searchQuery = ref('');
 
-const userRows: UserRow[] = [];
+const userRows: UserRow[] = [
+  {
+    id: '1',
+    order: 1,
+    username: 'admin',
+    fullName: 'Sistem Yöneticisi',
+    email: 'admin@ornekfirma.com',
+    role: 'Admin',
+    routeName: 'profile'
+  }
+];
 
-const moduleCards: ModuleCard[] = [];
+const productFields: ProductField[] = [
+  { id: 'usage-area', label: 'Kullanım Alanı', placeholder: 'Örn. Ofis / Üretim' },
+  { id: 'license-name', label: 'Lisans Adı', placeholder: 'Örn. Microsoft 365' },
+  { id: 'category', label: 'Bilgi Kategorisi', placeholder: 'Yazılım / Donanım' },
+  { id: 'factory', label: 'Fabrika', placeholder: 'Örn. İstanbul' },
+  { id: 'hardware-type', label: 'Donanım Tipi', placeholder: 'Laptop / Yazıcı' },
+  { id: 'brand', label: 'Marka', placeholder: 'Örn. Lenovo' },
+  { id: 'model', label: 'Model', placeholder: 'Örn. ThinkPad T14' }
+];
 
-const integrationCards: IntegrationCard[] = [];
+const integrationRows: IntegrationRow[] = [];
 
 const filteredUsers = computed(() => {
   const query = searchQuery.value.trim().toLowerCase();
@@ -251,15 +303,27 @@ const filteredUsers = computed(() => {
 
   return userRows.filter((user) => {
     return (
-      user.name.toLowerCase().includes(query) ||
-      user.department.toLowerCase().includes(query) ||
+      user.username.toLowerCase().includes(query) ||
+      user.fullName.toLowerCase().includes(query) ||
       user.email.toLowerCase().includes(query) ||
-      user.module.toLowerCase().includes(query)
+      user.role.toLowerCase().includes(query)
     );
   });
 });
 
+const activeUserCount = computed(() => userRows.length);
 const isSearchDisabled = computed(() => activeTab.value !== 'users');
+
+const toolbarButtonLabel = computed(() => {
+  switch (activeTab.value) {
+    case 'product':
+      return 'Kaydet';
+    case 'connections':
+      return 'Bağlantı Ekle';
+    default:
+      return 'Yeni Kullanıcı';
+  }
+});
 
 watch(activeTab, (tab) => {
   if (tab !== 'users') {
@@ -267,121 +331,248 @@ watch(activeTab, (tab) => {
   }
 });
 
-const primaryActionLabel = computed(() => {
+const handleToolbarAction = () => {
   switch (activeTab.value) {
-    case 'modules':
-      return 'Katalogu Güncelle';
-    case 'integrations':
-      return 'Bağlantı Ekle';
+    case 'product':
+      router.push({ name: 'inventory-tracking' });
+      break;
+    case 'connections':
+      router.push({ name: 'knowledge-base' });
+      break;
     default:
-      return 'Yeni Kullanıcı';
+      router.push({ name: 'profile' });
+      break;
   }
-});
+};
 
-const primaryActionRoute = computed<RouteLocationRaw>(() => {
-  switch (activeTab.value) {
-    case 'modules':
-      return { name: 'inventory-tracking' };
-    case 'integrations':
-      return { name: 'knowledge-base' };
-    default:
-      return { name: 'profile' };
-  }
-});
+const goToProfile = (routeName: RouteName) => {
+  router.push({ name: routeName });
+};
+
+const configureIntegration = (integration: IntegrationRow) => {
+  console.info('Entegrasyon yapılandırması', integration);
+  router.push({ name: 'records' });
+};
 </script>
 
 <style scoped>
-.admin-page {
+.admin-layout {
   display: grid;
+  grid-template-columns: 280px 1fr;
   gap: 2.5rem;
+  min-height: calc(100vh - 4rem);
+  padding: 2.5rem 2rem;
+  background: linear-gradient(180deg, #e0f2ff 0%, #f8fbff 100%);
   color: #0f172a;
 }
 
-.panel-card {
-  background: #ffffff;
-  border-radius: 28px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  box-shadow: 0 32px 70px rgba(15, 23, 42, 0.12);
-  padding: 2.5rem;
+.side-nav {
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 26px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  box-shadow: 0 24px 50px rgba(37, 99, 235, 0.1);
+  padding: 1.75rem 1.5rem;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.nav-group {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.nav-title {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 14px;
+  font-weight: 600;
+  color: #0f172a;
+  text-decoration: none;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.nav-link:hover,
+.nav-link:focus-visible {
+  background: rgba(37, 99, 235, 0.14);
+  color: #1d4ed8;
+}
+
+.nav-link.active {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.15), rgba(59, 130, 246, 0.2));
+  color: #1e3a8a;
+}
+
+.nav-icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: rgba(37, 99, 235, 0.12);
+  font-size: 1rem;
+}
+
+.panel-area {
   display: grid;
   gap: 2rem;
+}
+
+.page-hero {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1.5rem;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 26px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 32px 60px rgba(15, 23, 42, 0.12);
+  padding: 2rem 2.25rem;
+}
+
+.hero-copy {
+  max-width: 520px;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.page-hero h1 {
+  margin: 0;
+  font-size: 2.15rem;
+}
+
+.page-hero p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.hero-stat {
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.16), rgba(59, 130, 246, 0.16));
+  border-radius: 20px;
+  padding: 1.25rem 1.6rem;
+  display: grid;
+  gap: 0.35rem;
+  align-content: center;
+  color: #0f172a;
+}
+
+.stat-label {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #1e3a8a;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.stat-value {
+  margin: 0;
+  font-size: 2.25rem;
+  font-weight: 700;
+}
+
+.stat-link {
+  color: #1d4ed8;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.panel-card {
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 28px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  box-shadow: 0 36px 70px rgba(15, 23, 42, 0.14);
+  padding: 2.25rem;
+  display: grid;
+  gap: 1.75rem;
 }
 
 .panel-header {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 1.75rem;
-}
-
-.panel-heading {
-  display: grid;
-  gap: 0.85rem;
-  max-width: 580px;
-}
-
-.panel-badge {
-  display: inline-flex;
+  gap: 1.5rem;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.3rem 0.75rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  background: rgba(37, 99, 235, 0.12);
-  color: #1d4ed8;
-  font-weight: 700;
 }
 
-.panel-heading h1 {
-  margin: 0;
-  font-size: 2.3rem;
-}
-
-.panel-intro {
-  margin: 0;
-  font-size: 1.02rem;
-  color: #475569;
-  line-height: 1.6;
-}
-
-.panel-actions {
+.tab-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
-  align-items: center;
+  gap: 0.75rem;
 }
 
-.primary-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.75rem 1.65rem;
+.tab-button {
+  border: none;
   border-radius: 999px;
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  color: #f8fafc;
+  padding: 0.75rem 1.4rem;
+  background: rgba(226, 232, 240, 0.6);
+  color: #0f172a;
   font-weight: 600;
-  text-decoration: none;
-  box-shadow: 0 20px 36px rgba(37, 99, 235, 0.3);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  min-width: 150px;
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
-.primary-action:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 26px 44px rgba(37, 99, 235, 0.32);
+.tab-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 30px rgba(37, 99, 235, 0.16);
+}
+
+.tab-button.active {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.15), rgba(125, 211, 252, 0.25));
+  color: #1e3a8a;
+  box-shadow: 0 24px 42px rgba(37, 99, 235, 0.24);
+}
+
+.tab-caption {
+  font-size: 0.78rem;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.panel-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .search-field {
   display: inline-flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.6rem;
   padding: 0.7rem 1rem;
   border-radius: 16px;
-  background: rgba(248, 250, 252, 0.9);
   border: 1px solid rgba(148, 163, 184, 0.3);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  background: rgba(248, 250, 252, 0.9);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 .search-field input {
@@ -390,91 +581,64 @@ const primaryActionRoute = computed<RouteLocationRaw>(() => {
   outline: none;
   font-size: 0.95rem;
   color: #0f172a;
-  min-width: 220px;
+  min-width: 200px;
 }
 
 .search-field input::placeholder {
-  color: rgba(100, 116, 139, 0.8);
+  color: rgba(100, 116, 139, 0.7);
 }
 
 .search-field.disabled {
-  opacity: 0.6;
+  opacity: 0.55;
 }
 
 .search-field.disabled input {
   cursor: not-allowed;
 }
 
-.search-icon {
-  font-size: 1.1rem;
-}
-
-.panel-tabs {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1rem;
-}
-
-.panel-tab {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem 1.1rem;
-  border-radius: 18px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  background: rgba(248, 250, 252, 0.9);
-  cursor: pointer;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-}
-
-.panel-tab:hover {
-  transform: translateY(-2px);
-  border-color: rgba(37, 99, 235, 0.4);
-  box-shadow: 0 16px 28px rgba(37, 99, 235, 0.18);
-}
-
-.panel-tab.active {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.16), rgba(37, 99, 235, 0.12));
-  border-color: rgba(37, 99, 235, 0.45);
-  box-shadow: 0 20px 36px rgba(37, 99, 235, 0.22);
-}
-
-.tab-icon {
-  width: 2.4rem;
-  height: 2.4rem;
-  border-radius: 16px;
-  background: rgba(59, 130, 246, 0.18);
-  display: grid;
-  place-items: center;
-  font-size: 1.25rem;
-}
-
-.tab-text {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.3rem;
-}
-
-.tab-label {
+.toolbar-button {
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #f8fafc;
   font-weight: 600;
+  padding: 0.75rem 1.65rem;
+  cursor: pointer;
+  box-shadow: 0 22px 38px rgba(37, 99, 235, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.tab-caption {
-  font-size: 0.82rem;
-  color: #475569;
+.toolbar-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 26px 46px rgba(37, 99, 235, 0.3);
 }
 
 .panel-body {
-  display: block;
+  display: grid;
+  gap: 1.5rem;
 }
 
-.tab-panel {
-  background: rgba(248, 250, 252, 0.9);
-  border-radius: 22px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  padding: 1.5rem;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 22px 38px rgba(15, 23, 42, 0.08);
+.tab-copy {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.tab-copy h2 {
+  margin: 0;
+  font-size: 1.45rem;
+}
+
+.tab-copy p {
+  margin: 0;
+  color: #475569;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(248, 250, 252, 0.95);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .admin-table {
@@ -487,196 +651,107 @@ const primaryActionRoute = computed<RouteLocationRaw>(() => {
 .admin-table td {
   padding: 0.9rem 1.1rem;
   text-align: left;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-}
-
-.empty-row {
-  text-align: center;
-  padding: 2rem 0;
-  color: #64748b;
-  font-weight: 500;
-  background: rgba(241, 245, 249, 0.6);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
 }
 
 .admin-table thead th {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #475569;
   background: rgba(226, 232, 240, 0.4);
 }
 
-.user-name {
-  font-weight: 600;
+.admin-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
-.table-link {
+.actions {
+  text-align: right;
+}
+
+.link-button {
+  border: none;
+  background: none;
   color: #2563eb;
   font-weight: 600;
-}
-
-.module-grid,
-.integration-grid {
-  list-style: none;
-  margin: 0;
+  cursor: pointer;
   padding: 0;
-  display: grid;
-  gap: 1.2rem;
 }
 
-.module-card,
-.integration-card {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 1rem;
-  align-items: center;
-  padding: 1.4rem 1.6rem;
-  border-radius: 18px;
-  background: #ffffff;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  box-shadow: 0 18px 32px rgba(15, 23, 42, 0.08);
-}
-
-.module-icon,
-.integration-icon {
-  width: 2.8rem;
-  height: 2.8rem;
-  border-radius: 18px;
-  background: rgba(59, 130, 246, 0.16);
-  display: grid;
-  place-items: center;
-  font-size: 1.35rem;
-}
-
-.module-label,
-.integration-label {
-  margin: 0;
-  font-weight: 600;
-  font-size: 1.05rem;
-}
-
-.module-meta,
-.integration-status {
-  margin: 0.25rem 0 0;
-  color: #475569;
-  font-size: 0.9rem;
-}
-
-.module-note,
-.integration-note {
-  margin: 0.45rem 0 0;
-  color: #1f2937;
-  font-size: 0.92rem;
-  line-height: 1.5;
-}
-
-.module-link,
-.integration-link {
-  color: #2563eb;
-  font-weight: 600;
-  text-decoration: none;
-  font-size: 0.9rem;
+.link-button:hover,
+.link-button:focus-visible {
+  text-decoration: underline;
 }
 
 .empty-state {
-  margin: 0;
-  padding: 2.25rem;
   text-align: center;
-  border-radius: 20px;
-  border: 1px dashed rgba(148, 163, 184, 0.5);
-  color: #475569;
-  background: rgba(248, 250, 252, 0.9);
+  padding: 2rem 0;
+  color: #64748b;
   font-weight: 500;
 }
 
-.workflow-card {
-  background: #ffffff;
-  border-radius: 26px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  padding: 2.25rem;
-  box-shadow: 0 28px 52px rgba(15, 23, 42, 0.1);
+.product-form {
   display: grid;
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem 1.5rem;
 }
 
-.workflow-card header h2 {
-  margin: 0 0 0.6rem;
-  font-size: 1.6rem;
-}
-
-.workflow-card header p {
-  margin: 0;
-  color: #475569;
-  line-height: 1.6;
-}
-
-.workflow-steps {
-  margin: 0;
-  padding-left: 1.2rem;
+.form-field {
   display: grid;
-  gap: 1rem;
-  color: #1f2937;
-  line-height: 1.6;
+  gap: 0.45rem;
 }
 
-.workflow-steps a {
-  color: #2563eb;
+.form-field label {
   font-weight: 600;
+  color: #1e293b;
 }
 
-@media (max-width: 1024px) {
-  .panel-card {
-    padding: 2rem;
-  }
+.form-field input {
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  padding: 0.7rem 0.9rem;
+  font-size: 0.95rem;
+  background: rgba(255, 255, 255, 0.9);
+}
 
-  .panel-tabs {
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  }
-
-  .module-card,
-  .integration-card {
+@media (max-width: 1100px) {
+  .admin-layout {
     grid-template-columns: 1fr;
-    text-align: left;
+  }
+
+  .side-nav {
+    order: 2;
+  }
+
+  .panel-area {
+    order: 1;
   }
 }
 
 @media (max-width: 720px) {
-  .panel-header {
+  .page-hero {
     flex-direction: column;
   }
 
-  .panel-actions {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .search-field input {
-    min-width: 0;
-    width: 100%;
-  }
-}
-
-@media (max-width: 560px) {
-  .panel-card {
-    padding: 1.6rem;
-  }
-
-  .panel-tabs {
-    grid-template-columns: 1fr;
-  }
-
-  .panel-actions {
+  .panel-header {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .primary-action,
-  .search-field {
+  .panel-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-field,
+  .toolbar-button {
     width: 100%;
   }
 
-  .search-field {
-    justify-content: flex-start;
+  .tab-list {
+    width: 100%;
+    justify-content: space-between;
   }
 }
 </style>
